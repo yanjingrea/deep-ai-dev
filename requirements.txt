@@ -1,0 +1,8 @@
+pandas
+streamlit
+logzero
+numpy
+statsmodels
+plotly
+tqdm
+git+ssh://git@gitlab.com/reapl1/rea-lab/rea-python-2022.git
