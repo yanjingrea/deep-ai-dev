@@ -1,9 +1,7 @@
 import os
 from os.path import dirname, realpath
 
-OUTPUT_DIR = dirname(realpath(__file__)) + os.sep + '_local' + os.sep
-figures_dir = OUTPUT_DIR + 'figures/'
-tables_dir = OUTPUT_DIR + 'tables/'
+OUTPUT_DIR = dirname(realpath(__file__)) + os.sep + 'local' + os.sep
 
 
 # ---------------------------------------------------------------------------

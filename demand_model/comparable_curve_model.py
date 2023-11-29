@@ -1,3 +1,4 @@
+import pickle
 import warnings
 
 from dataclasses import dataclass
@@ -10,6 +11,7 @@ import pandas as pd
 from demand_model.linear_demand_model import RoomTypeDemandModel
 from demand_model.ds_partial_coef import FloorCoef, AreaCoef, TimeIndex, ZoneCoef
 from constants.redshift import query_data
+from constants.utils import OUTPUT_DIR
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
@@ -30,6 +32,7 @@ class ComparableDemandModel:
         'proj_num_of_units',
     ]
     max_year_gap = 3
+    rolling_windows = 3
     quantity: str = 'sales'
     price: str = 'price'
     project_key: str = 'dw_project_id'
@@ -92,96 +95,110 @@ class ComparableDemandModel:
             'forecasting': self.developer_pricing_query
         }.get(mode, lambda a: a)
 
-        data = query_data(
-            f"""
-                    with base_index as ({time_index.query_scripts}),
-                    base_floor_coef as ({floor_coef.query_scripts}),
-                    base_area_coef as ({area_coef.query_scripts}), 
-                    {price_query},
-                    base_property_panel as (
-                    select
-                        b.dw_project_id,
-                        a.num_of_bedrooms,
-                        to_date(transaction_month_index, 'YYYYMM') as transaction_month,
-                        (
-                            select hi_avg_improved
-                            from data_science.sg_condo_resale_index_sale
-                            order by transaction_month_index desc limit 1
-                        ) as current_index,
-                        avg(
-                            unit_price_psf
-                                * floor_adjust_coef
-                                * area_adjust_coef
-                                * zone_adjust_coef
-                                * time_adjust_coef
-                        ) as price,
-                        {0 if mode == 'forecasting' else 'count(*)'} as sales
-                    from base_property_price a
-                    left outer join data_science.ui_master_sg_project_geo_view_filled_features_condo b
-                        using (dw_project_id)
-                    left outer join  base_index c
-                        using (transaction_month_index)
-                    left outer join  base_floor_coef f
-                        using (address_floor_num)
-                    left outer join base_area_coef g
-                       on a.floor_area_sqft >= g.area_lower_bound and a.floor_area_sqft < g.area_upper_bound
-                    left outer join (
-                        {zone_coef.query_scripts}
-                    ) d
-                        on b.zone = d.zone and left(a.transaction_month_index, 4)::int = d.transaction_year
-                    group by 1, 2, 3
-                    )
-                    select
-                        dw_project_id,
-                        project_name,
-                        num_of_bedrooms,
-                        to_date(project_launch_month, 'YYYYMM') as launch_year_month,
-                        transaction_month,
-                        datediff(
-                            quarter,
-                            launch_year_month,
-                            transaction_month
-                        ) + 1 as launching_period,
-                        price,
-                        case
-                            when num_of_bedrooms = 0 then project_units_zero_rm
-                            when num_of_bedrooms = 1 then project_units_one_rm
-                            when num_of_bedrooms = 2 then project_units_two_rm
-                            when num_of_bedrooms = 3 then project_units_three_rm
-                            when num_of_bedrooms = 4 then project_units_four_rm
-                            when num_of_bedrooms = 5 then project_units_five_rm
-                        end as num_of_units,
-                        sales,
-                        case
-                            when lag(sales, 1) over (
+        raw_data_path = f'{OUTPUT_DIR}{mode}_data.plk'
+        if True:
+            data = pickle.load(open(raw_data_path, 'rb'))
+        else:
+            data = query_data(
+                f"""
+                        with base_index as ({time_index.query_scripts}),
+                        base_floor_coef as ({floor_coef.query_scripts}),
+                        base_area_coef as ({area_coef.query_scripts}), 
+                        {price_query},
+                        base_property_panel as (
+                        select
+                            b.dw_project_id,
+                            a.num_of_bedrooms,
+                            to_date(transaction_month_index, 'YYYYMM') as transaction_month,
+                            (
+                                select hi_avg_improved
+                                from data_science.sg_condo_resale_index_sale
+                                order by transaction_month_index desc limit 1
+                            ) as current_index,
+                            avg(
+                                unit_price_psf
+                                    * floor_adjust_coef
+                                    * area_adjust_coef
+                                    * zone_adjust_coef
+                                    * time_adjust_coef
+                            ) as price,
+                            {0 if mode == 'forecasting' else 'count(*)'} as sales
+                        from base_property_price a
+                        left outer join data_science.ui_master_sg_project_geo_view_filled_features_condo b
+                            using (dw_project_id)
+                        left outer join  base_index c
+                            using (transaction_month_index)
+                        left outer join  base_floor_coef f
+                            using (address_floor_num)
+                        left outer join base_area_coef g
+                           on a.floor_area_sqft >= g.area_lower_bound and a.floor_area_sqft < g.area_upper_bound
+                        left outer join (
+                            {zone_coef.query_scripts}
+                        ) d
+                            on b.zone = d.zone and left(a.transaction_month_index, 4)::int = d.transaction_year
+                        group by 1, 2, 3
+                        )
+                        select
+                            dw_project_id,
+                            c.project_display_name as project_name,
+                            num_of_bedrooms,
+                            to_date(project_launch_month, 'YYYYMM') as launch_year_month,
+                            transaction_month,
+                            datediff(
+                                quarter,
+                                launch_year_month,
+                                transaction_month
+                            ) + 1 as launching_period,
+                            price,
+                            case
+                                when num_of_bedrooms = 0 then project_units_zero_rm
+                                when num_of_bedrooms = 1 then project_units_one_rm
+                                when num_of_bedrooms = 2 then project_units_two_rm
+                                when num_of_bedrooms = 3 then project_units_three_rm
+                                when num_of_bedrooms = 4 then project_units_four_rm
+                                when num_of_bedrooms = 5 then project_units_five_rm
+                            end as num_of_units,
+                            sales,
+                            case
+                                when lag(sales, 1) over (
+                                        partition by dw_project_id, num_of_bedrooms
+                                        order by  transaction_month
+                                    ) is null then num_of_units
+                                else num_of_units - sum(sales) over (
                                     partition by dw_project_id, num_of_bedrooms
-                                    order by  transaction_month
-                                ) is null then num_of_units
-                            else num_of_units - sum(sales) over (
-                                partition by dw_project_id, num_of_bedrooms
-                                order by transaction_month
-                                rows between unbounded preceding and 1 preceding
-                            )
-                        end as num_of_remaining_units,
-                        proj_num_of_units,
-                        tenure,
-                        case
-                            when num_of_bedrooms = 0 then project_avg_size_of_zero_rm
-                            when num_of_bedrooms = 1 then project_avg_size_of_one_rm
-                            when num_of_bedrooms = 2 then project_avg_size_of_two_rm
-                            when num_of_bedrooms = 3 then project_avg_size_of_three_rm
-                            when num_of_bedrooms = 4 then project_avg_size_of_four_rm
-                            when num_of_bedrooms = 5 then project_avg_size_of_five_rm
-                        end as floor_area_sqm,
-                        proj_max_floor,
-                        zone
-                    from base_property_panel
-                    join data_science.ui_master_sg_project_geo_view_filled_features_condo
-                        using(dw_project_id)
-                    where dateadd(year, -{self.max_year_gap}, current_date) <= to_date(project_launch_month, 'YYYYMM')
-                    order by 1, 2, 3
-                    """
-        )
+                                    order by transaction_month
+                                    rows between unbounded preceding and 1 preceding
+                                )
+                            end as num_of_remaining_units,
+                            proj_num_of_units,
+                            tenure,
+                            case
+                                when num_of_bedrooms = 0 then project_avg_size_of_zero_rm
+                                when num_of_bedrooms = 1 then project_avg_size_of_one_rm
+                                when num_of_bedrooms = 2 then project_avg_size_of_two_rm
+                                when num_of_bedrooms = 3 then project_avg_size_of_three_rm
+                                when num_of_bedrooms = 4 then project_avg_size_of_four_rm
+                                when num_of_bedrooms = 5 then project_avg_size_of_five_rm
+                            end as floor_area_sqm,
+                            proj_max_floor,
+                            zone
+                        from base_property_panel a
+                        join data_science.ui_master_sg_project_geo_view_filled_features_condo b
+                            using(dw_project_id)
+                        join (
+                            select 
+                            project_dwid as dw_project_id,
+                            project_display_name 
+                            from ui_app.project_summary_prod_sg
+                         ) c
+                            using(dw_project_id)
+                        where dateadd(year, -{self.max_year_gap}, current_date) <= to_date(project_launch_month, 'YYYYMM')
+                        order by 1, 2, 3
+                        """
+            )
+            pickle.dump(
+                data, open(raw_data_path, 'wb')
+            )
 
         # categorical data processing
         if 'tenure' in self.features:
@@ -191,14 +208,24 @@ class ComparableDemandModel:
 
         return data
 
-    @staticmethod
-    def calculate_launching_period(project_data):
+    def calculate_launching_period(self, project_data):
         project_data['launch_year_month'] = pd.to_datetime(project_data['launch_year_month'])
+        project_data['transaction_month_end'] = (
+            project_data['transaction_month'].apply(
+                lambda d:
+                pd.period_range(
+                    d,
+                    periods=self.rolling_windows,
+                    freq='M'
+                ).to_timestamp()[-1]
+            )
+        )
+
         project_data['launching_period'] = project_data.apply(
             lambda row: len(
                 pd.period_range(
                     start=row['launch_year_month'],
-                    end=row['transaction_month'],
+                    end=row['transaction_month_end'],
                     freq='M'
                 )
             ), axis=1
@@ -212,32 +239,46 @@ class ComparableDemandModel:
 
         def rolling_process(time_series_data):
 
-            start = time_series_data['transaction_month'].min()
-            end = time_series_data['transaction_month'].max()
+            period_start_min = time_series_data['transaction_month'].min()
+            period_start_max = time_series_data['transaction_month'].max()
 
-            T = pd.period_range(
-                start, end, freq='M'
-            ).to_timestamp().to_series().rename('transaction_month').reset_index(drop=True)
+            to_pd_timeseries = lambda s: s.to_timestamp().to_series().reset_index(drop=True)
 
-            if len(T) == 1:
+            T_start = to_pd_timeseries(
+                pd.period_range(
+                    period_start_min, period_start_max, freq='M'
+                ).rename('transaction_month')
+            )
+            #
+            # T_end = to_pd_timeseries(
+            #     pd.period_range(
+            #         period_end_min, periods=len(T_start), freq='M'
+            #     ).rename('transaction_month_end')
+            # )
+
+            if len(T_start) == 1:
                 return time_series_data.reset_index(drop=True)
             else:
-                wins = max(2, min(3, len(T)))
+                wins = max(2, min(self.rolling_windows, len(T_start)))
                 rolling_params = dict(window=wins, min_periods=wins)
 
-            expended_data = pd.merge(time_series_data, T, how='right')
-            Q = expended_data[self.quantity].fillna(0).rolling(**rolling_params).sum()
-            PQ = (expended_data[self.quantity] * expended_data[self.price]).fillna(0).rolling(**rolling_params).sum()
+            expended_data = pd.merge(time_series_data, T_start, how='right')
+            # expended_data['transaction_month_end'] = T_end
+
+            foreward_cumsum = lambda s: s.fillna(0).rolling(**rolling_params).sum().shift(-(wins-1))
+
+            Q = foreward_cumsum(expended_data[self.quantity])
+            PQ = foreward_cumsum(expended_data[self.quantity] * expended_data[self.price])
 
             P = PQ / Q
 
             expended_data[self.quantity] = Q
             expended_data[self.price] = P
-            expended_data['launching_period'] = np.arange(1, len(expended_data) + 1)
 
             final_data = expended_data[expended_data[self.quantity] != 0] \
                 .dropna(subset=self.quantity) \
-                .fillna(method='bfill')
+                .fillna(method='bfill') \
+                .fillna(method='ffill')
             final_data['num_of_remaining_units'] = final_data['num_of_units'] - expended_data[self.quantity].shift(
                 1).cumsum().fillna(0)
 
@@ -257,6 +298,7 @@ class ComparableDemandModel:
                     continue
 
                 processed_temp = rolling_process(temp)
+
                 rolling_data = pd.concat([rolling_data, processed_temp], axis='rows', ignore_index=True)
 
         rolling_data = self.calculate_launching_period(rolling_data)
@@ -275,6 +317,23 @@ class ComparableDemandModel:
             ]
 
         return data
+
+    def prepare_forecast_demand_curve_data(
+            self,
+            project_data
+    ):
+        period_data = project_data.iloc[[-1]].copy()
+
+        remaining = project_data['num_of_remaining_units'].iloc[-1] - project_data[self.quantity].iloc[-1]
+
+        if remaining <= 0:
+            return pd.DataFrame()
+
+        period_data['num_of_remaining_units'] = remaining
+        period_data['transaction_month'] = pd.to_datetime(datetime.today().replace(day=1).date())
+        period_data = self.calculate_launching_period(period_data)
+
+        return period_data
 
     def __post_init__(self):
         self.data = self.preprocess_base_training_data()
@@ -468,7 +527,7 @@ class ComparableDemandModel:
                 project_data = self.forecasting_data[
                     (self.forecasting_data[self.project_key] == project_id) &
                     (self.forecasting_data['num_of_bedrooms'] == num_of_bedroom)
-                ].copy()
+                    ].copy()
 
         coef_to_multiply = self.query_adjust_coef(project_data)
 

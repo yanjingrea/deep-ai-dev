@@ -3,8 +3,8 @@ from logzero import logger
 import pandas as pd
 import streamlit as st
 
-import data_munging
-from data_munging import *
+import core_function
+from core_function import *
 
 
 padding = 0
@@ -31,7 +31,9 @@ TABLE_PAGE_LEN = 10
 
 st.title("Demand Curve")
 
-projects_choices = list(available_projects.index.get_level_values(0))
+projects_choices = list(
+    available_projects.index.get_level_values(0).unique()
+)
 
 with st.sidebar.form(key="my_form"):
     selectbox_project = st.selectbox("Choose a project", projects_choices)
@@ -49,27 +51,30 @@ with st.sidebar.form(key="my_form"):
 expander = st.sidebar.expander("What is this project?")
 expander.write(
     """
-    Objective: To model the **price** and **quantity** sold relationship for condominium new launches in Singapore
-    Input data: transaction data, project feature data, geospatial data, market condition data, macro-economic factor data
+    Objective: To model the **price** and **quantity** sold relationship for condominium new launches in Singapore \n
+    Input data: 
+        transaction data, project feature data, geospatial data, market condition data, macro-economic factor data \n
     Output: model that takes in attributes of a building, and output the quantity at various prices
 """
 )
 
-network_place, _, descriptor = st.columns([6, 1, 3])
+network_place, _ = st.columns([9, 1])
 network_loc = network_place.empty()
 
 # Create starting graph
 # subhead
-descriptor.subheader(
-    data_munging.display_project(selectbox_project)
-)
+# descriptor.subheader(
+#     core_function.display_project(selectbox_project)
+# )
 # graph
-demand_curve_image = data_munging.plot_2d_demand_curve(selectbox_project, selectbox_bed_num)
-network_loc.plotly_chart(demand_curve_image)
-logger.info("Graph Created, doing app stuff")
+demand_curve_image = core_function.plot_2d_demand_curve(selectbox_project, selectbox_bed_num)
+
+if demand_curve_image:
+    network_loc.plotly_chart(demand_curve_image)
+    logger.info("Graph Created, doing app stuff")
 
 if pressed:
-    demand_curve_image = data_munging.plot_2d_demand_curve(
+    demand_curve_image = core_function.plot_2d_demand_curve(
         selectbox_project, selectbox_bed_num
     )
 
