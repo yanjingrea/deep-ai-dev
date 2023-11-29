@@ -1,4 +1,6 @@
 import streamlit as st
+
+from neighborhood_clusters.core_model import KMeansCluster
 from neighborhood_clusters.helper_function import *
 
 st.set_page_config(
@@ -23,29 +25,29 @@ st.markdown(
 tab1, tab2 = st.tabs(['heatmap', 'clustering'])
 with tab1:
     st.title("Singapore New Launch Condo Heatmap")
-    tab1_col1, tab1_col2, _ = st.columns([3, 6, 1])
-    tab1_network_col = tab1_col2.empty()
+    col1, col2, _ = st.columns([3, 6, 1])
+    network_col1 = col2.empty()
 
     feature_choices = list(data.columns.difference(['geometry', 'label']))
-    with tab1_col1:
+    with col1:
         selectbox_feature = st.selectbox("Choose a feature", feature_choices)
         selectbox_unit = st.selectbox("Choose a unit", ['density', 'absolute'])
         pressed_button1 = st.button("Visualize Feature Heatmap")
 
     heatmap = plot_feature_heatmap(selectbox_feature, selectbox_unit)
-    with tab1_network_col:
+    with network_col1:
         st.plotly_chart(heatmap)
 
     if pressed_button1:
         heatmap = plot_feature_heatmap(selectbox_feature, selectbox_unit)
-        with tab1_network_col:
-            tab1_network_col.plotly_chart(heatmap)
+        with network_col1:
+            network_col1.plotly_chart(heatmap)
 
 with tab2:
     st.title("Singapore Neighborhood Clustering")
 
-    col1, col2, _ = st.columns([3, 6, 1])
-    network_col = col2.empty()
+    col3, col4, _ = st.columns([3, 6, 1])
+    network_col2 = col4.empty()
 
     tab2_feature_choices = list(
         data.columns.difference(
@@ -53,7 +55,7 @@ with tab2:
         )
     )
 
-    with col1:
+    with col3:
         selectbox_feature = st.multiselect(
             "Choose features",
             feature_choices,
@@ -74,11 +76,17 @@ with tab2:
         pressed = st.button("Visualize Clusters")
 
     if pressed:
-        with network_col:
+        cluster_model = KMeansCluster(
+            features=selectbox_feature,
+            num_of_clusters=selectbox_clusters_num,
+            data=data.copy()
+        )
+
+        with network_col2:
             with st.container():
                 con_tab1, con_tab2 = st.tabs(['elbow', 'clusters'])
 
-                cluster_map = plot_clusters(selectbox_feature, selectbox_clusters_num)
+                # cluster_map = plot_clusters(selectbox_feature, selectbox_clusters_num)
 
                 con_tab1.plotly_chart(
                     plot_elbow(
@@ -87,4 +95,18 @@ with tab2:
                     )
                 )
 
-                con_tab2.plotly_chart(cluster_map)
+                con_tab2.plotly_chart(cluster_model.plot_clusters())
+
+                st.divider()
+
+                with st.container():
+                    with st.container():
+                        histogram_feature = st.selectbox(
+                            "select a feature",
+                            feature_choices
+                        )
+                        violin_button = st.button("generate histogram plot")
+
+                    st.plotly_chart(
+                        cluster_model.plot_histogram(histogram_feature)
+                    )

@@ -1,15 +1,16 @@
+import pickle
 from datetime import datetime
-
 
 import geopandas as gpd
 from shapely import wkt
 
-
-from constants.redshift import query_data
 from constants.utils import OUTPUT_DIR
 
 raw_data_path = f'{OUTPUT_DIR}neighborhood_features.plk'
-if True:
+if False:
+
+    from constants.redshift import query_data
+
     current_month = datetime.today().replace(day=1).date()
 
     property_type_mapping = {
@@ -137,4 +138,3 @@ if False:
         where location_level = 'district'
         """
     )
-
