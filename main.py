@@ -1,10 +1,9 @@
 from logzero import logger
 
-import pandas as pd
 import streamlit as st
 
-import core_function
-from core_function import *
+from demand_model.streamlit_web_app import core_function
+from demand_model.streamlit_web_app.core_function import *
 
 
 padding = 0

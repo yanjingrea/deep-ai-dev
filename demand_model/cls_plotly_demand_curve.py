@@ -9,7 +9,7 @@ from constants.utils import NatureD
 
 
 @dataclass
-class PQDemandCurve:
+class PlotlyDemandCurve:
     P: np.ndarray
     Q: np.ndarray
 

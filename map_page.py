@@ -1,7 +1,7 @@
 import streamlit as st
 
-from neighborhood_clusters.core_model import KMeansCluster
-from neighborhood_clusters.helper_function import *
+from neighborhood_clusters.cls_core_model import KMeansCluster
+from neighborhood_clusters.func_helper_function import *
 
 st.set_page_config(
     page_title="Neighborhood Clustering",
@@ -31,15 +31,14 @@ with tab1:
     feature_choices = list(data.columns.difference(['geometry', 'label']))
     with col1:
         selectbox_feature = st.selectbox("Choose a feature", feature_choices)
-        selectbox_unit = st.selectbox("Choose a unit", ['density', 'absolute'])
         pressed_button1 = st.button("Visualize Feature Heatmap")
 
-    heatmap = plot_feature_heatmap(selectbox_feature, selectbox_unit)
+    heatmap = plot_feature_heatmap(selectbox_feature)
     with network_col1:
         st.plotly_chart(heatmap)
 
     if pressed_button1:
-        heatmap = plot_feature_heatmap(selectbox_feature, selectbox_unit)
+        heatmap = plot_feature_heatmap(selectbox_feature)
         with network_col1:
             network_col1.plotly_chart(heatmap)
 
@@ -101,12 +100,12 @@ with tab2:
 
                 with st.container():
                     with st.container():
-                        histogram_feature = st.selectbox(
+                        violin_feature = st.selectbox(
                             "select a feature",
                             feature_choices
                         )
                         violin_button = st.button("generate histogram plot")
 
                     st.plotly_chart(
-                        cluster_model.plot_histogram(histogram_feature)
+                        cluster_model.plot_histogram(violin_feature)
                     )

@@ -1,11 +1,14 @@
 from dataclasses import dataclass
+from typing import Literal
+
 import numpy as np
 import pandas as pd
 
 import statsmodels.api as sm
 import statsmodels.regression.linear_model
 
-from demand_model.plotly_demand_curve import PQDemandCurve
+from demand_model.cls_plotly_demand_curve import PlotlyDemandCurve
+from demand_model.cls_plt_demand_curve import PltDemandCurve
 
 
 @dataclass
@@ -57,7 +60,8 @@ class RoomTypeDemandModel:
             self,
             project_data,
             launching_period,
-            price_range: tuple = None
+            price_range: tuple = None,
+            fig_format: Literal['plotly', 'plt'] = 'plotly'
     ):
 
         n_points = 50
@@ -73,10 +77,16 @@ class RoomTypeDemandModel:
 
         pred_Q = self.predict(sample_data).values
 
-        return PQDemandCurve(
-            P=P,
-            Q=pred_Q
-        )
+        if fig_format == 'plotly':
+            return PlotlyDemandCurve(
+                P=P,
+                Q=pred_Q
+            )
+        else:
+            return PltDemandCurve(
+                P=P,
+                Q=pred_Q
+            )
 
     def extract_3d_demand_curve(
             self,
@@ -104,7 +114,7 @@ class RoomTypeDemandModel:
         ).plot()
 
         ax.set_yticks(
-            np.arange(1, len(launching_periods)+1),
+            np.arange(1, len(launching_periods) + 1),
             adj_project_data['transaction_month'].dt.date
         )
 

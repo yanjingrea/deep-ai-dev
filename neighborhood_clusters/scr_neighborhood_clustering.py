@@ -1,7 +1,7 @@
 from matplotlib import pyplot as plt
 from sklearn.cluster import KMeans
 
-from neighborhood_clusters.neighborhood_features import data
+from neighborhood_clusters.scr_neighborhood_features import data
 
 X_cols = [
     'num_of_completed_units_condo',

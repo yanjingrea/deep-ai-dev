@@ -1,23 +1,17 @@
-from typing import Literal
-
 import numpy as np
 
 import plotly.express as px
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
-from neighborhood_clusters.neighborhood_features import df as data
+from neighborhood_clusters.scr_neighborhood_features_v2 import df as data
 from sklearn.cluster import KMeans
 
 
 def plot_feature_heatmap(
-        feature,
-        unit: Literal['density', 'absolute']
+        feature
 ):
     geo_df = data.copy()
-
-    if (unit == 'density') & ('num_of' in feature):
-        geo_df[feature] = geo_df[feature] / geo_df['size_sqkm']
 
     # to create a color scale that can deal with na value
     na = -0.01 if 'percent' in feature else -1

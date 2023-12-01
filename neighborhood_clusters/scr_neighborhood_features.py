@@ -7,7 +7,7 @@ from shapely import wkt
 from constants.utils import OUTPUT_DIR
 
 raw_data_path = f'{OUTPUT_DIR}neighborhood_features.plk'
-if False:
+if True:
 
     from constants.redshift import query_data
 
@@ -90,9 +90,9 @@ if False:
         """
     )
 
-    # pickle.dump(
-    #     data, open(raw_data_path, 'wb')
-    # )
+    pickle.dump(
+        data, open(raw_data_path, 'wb')
+    )
 
 else:
     data = pickle.load(open(raw_data_path, 'rb'))

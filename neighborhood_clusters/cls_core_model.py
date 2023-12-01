@@ -32,7 +32,8 @@ class KMeansCluster:
             str(clu): col
             for clu, col in zip(
                 self.clusters_list,
-                px.colors.qualitative.Pastel1[:-1] + px.colors.qualitative.Set3
+                px.colors.qualitative.Pastel1[:-1] +
+                px.colors.qualitative.Set3
             )
         }
         return color_discrete_map
@@ -124,7 +125,7 @@ class KMeansCluster:
         return fig
 
 if False:
-    from neighborhood_clusters.neighborhood_features import df as data
+    from neighborhood_clusters.scr_neighborhood_features import df as data
 
     selectbox_feature = [
         'num_of_completed_units_condo',
