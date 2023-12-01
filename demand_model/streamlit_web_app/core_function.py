@@ -8,7 +8,7 @@ from demand_model.scr_common_training import *
 
 # -------------------------------------------------
 
-def plot_ui_demand_curve(
+def plot_2d_demand_curve(
         project_name,
         num_of_bedroom
 ):
