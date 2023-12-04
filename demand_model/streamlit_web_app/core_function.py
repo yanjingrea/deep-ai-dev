@@ -8,6 +8,26 @@ from demand_model.scr_common_training import *
 
 # -------------------------------------------------
 
+def get_linear_model_and_training_data(
+        project_name,
+        num_of_bedroom
+):
+    adjusted_project_data = get_adjusted_project_data(
+        project_name,
+        num_of_bedroom
+    ).copy().reset_index()
+
+    if adjusted_project_data.empty:
+        return None
+
+    linear_model, training_data = comparable_demand_model.fit_project_room_demand_model(
+        project_id=adjusted_project_data.dw_project_id.iloc[0],
+        num_of_bedroom=num_of_bedroom
+    )
+
+    return linear_model, training_data
+
+
 def plot_2d_demand_curve(
         project_name,
         num_of_bedroom
@@ -106,3 +126,5 @@ def plot_2d_demand_curve(
         )
 
     return fig
+
+

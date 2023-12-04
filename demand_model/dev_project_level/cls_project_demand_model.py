@@ -25,7 +25,7 @@ zone_coef = ZoneCoef()
 
 
 @dataclass
-class ComparableDemandModel:
+class ProjectDemandModel:
     features = [
         'price',
         'launching_period',
@@ -81,6 +81,7 @@ class ComparableDemandModel:
                     a.project_launch_month::varchar as transaction_month_index,
                     num_of_bedrooms,
                     floor_area_sqft,
+                    floor_area_sqm,
                     address_floor_num,
                     developer_psf as unit_price_psf
                 from base_developer_price a
@@ -98,14 +99,16 @@ class ComparableDemandModel:
 
         launch_date_filter = {
             'training': f"""
-                where to_date(project_launch_month, 'YYYYMM') between
-                dateadd(year, -{self.max_year_gap}, current_date)
-                and
-                dateadd(month, -{self.rolling_windows}, current_date)
+                where (
+                    to_date(project_launch_month, 'YYYYMM') between
+                    dateadd(year, -{self.max_year_gap}, current_date)
+                    and
+                    dateadd(month, -{self.rolling_windows}, current_date)
+                )
                 """,
             'forecasting': f"""
-                where dateadd(year, -{self.max_year_gap}, current_date) <= to_date(project_launch_month, 'YYYYMM')
-                """
+                where dateadd(month, -{self.max_year_gap}, current_date) <= to_date(project_launch_month, 'YYYYMM')
+            """
         }.get(mode, lambda a: a)
 
         raw_data_path = f'{OUTPUT_DIR}{mode}_data.plk'
@@ -121,7 +124,6 @@ class ComparableDemandModel:
                 base_property_panel as (
                     select
                         b.dw_project_id,
-                        a.num_of_bedrooms,
                         to_date(transaction_month_index, 'YYYYMM') as transaction_month,
                         (
                             select hi_avg_improved
@@ -135,6 +137,7 @@ class ComparableDemandModel:
                                 * zone_adjust_coef
                                 * time_adjust_coef
                         ) as price,
+                        avg(floor_area_sqm) as floor_area_sqm,
                         {0 if mode == 'forecasting' else 'count(*)'} as sales
                     from base_property_price a
                     left outer join data_science.ui_master_sg_project_geo_view_filled_features_condo b
@@ -149,12 +152,11 @@ class ComparableDemandModel:
                         {zone_coef.query_scripts}
                     ) d
                         on b.zone = d.zone and left(a.transaction_month_index, 4)::int = d.transaction_year
-                    group by 1, 2, 3
+                    group by 1, 2
                 )
                 select
                     dw_project_id,
                     c.project_display_name as project_name,
-                    num_of_bedrooms,
                     to_date(project_launch_month, 'YYYYMM') as launch_year_month,
                     transaction_month,
                     datediff(
@@ -163,36 +165,21 @@ class ComparableDemandModel:
                         transaction_month
                     ) + 1 as launching_period,
                     price,
-                    case
-                        when num_of_bedrooms = 0 then project_units_zero_rm
-                        when num_of_bedrooms = 1 then project_units_one_rm
-                        when num_of_bedrooms = 2 then project_units_two_rm
-                        when num_of_bedrooms = 3 then project_units_three_rm
-                        when num_of_bedrooms = 4 then project_units_four_rm
-                        when num_of_bedrooms = 5 then project_units_five_rm
-                    end as num_of_units,
                     sales,
                     case
                         when lag(sales, 1) over (
-                                partition by dw_project_id, num_of_bedrooms
-                                order by  transaction_month
-                            ) is null then num_of_units
-                        else num_of_units - sum(sales) over (
-                            partition by dw_project_id, num_of_bedrooms
+                            partition by dw_project_id
+                            order by transaction_month
+                            ) is null then proj_num_of_units
+                        else proj_num_of_units - sum(sales) over (
+                            partition by dw_project_id
                             order by transaction_month
                             rows between unbounded preceding and 1 preceding
-                        )
-                    end as num_of_remaining_units,
+                            )
+                        end as num_of_remaining_units,
                     proj_num_of_units,
+                    floor_area_sqm,
                     tenure,
-                    case
-                        when num_of_bedrooms = 0 then project_avg_size_of_zero_rm
-                        when num_of_bedrooms = 1 then project_avg_size_of_one_rm
-                        when num_of_bedrooms = 2 then project_avg_size_of_two_rm
-                        when num_of_bedrooms = 3 then project_avg_size_of_three_rm
-                        when num_of_bedrooms = 4 then project_avg_size_of_four_rm
-                        when num_of_bedrooms = 5 then project_avg_size_of_five_rm
-                    end as floor_area_sqm,
                     proj_max_floor,
                     zone,
                     neighborhood
@@ -219,6 +206,7 @@ class ComparableDemandModel:
             data['tenure'] = data['tenure'].apply(lambda a: 1 if a == 'freehold' else 0)
         data['transaction_month'] = pd.to_datetime(data['transaction_month'])
         data = data[~data[self.price].isna()].copy()
+        data.set_index(self.project_key, drop=False, inplace=True)
 
         return data
 
@@ -263,12 +251,6 @@ class ComparableDemandModel:
                     period_start_min, period_start_max, freq='M'
                 ).rename('transaction_month')
             )
-            #
-            # T_end = to_pd_timeseries(
-            #     pd.period_range(
-            #         period_end_min, periods=len(T_start), freq='M'
-            #     ).rename('transaction_month_end')
-            # )
 
             if len(T_start) == 1:
                 return time_series_data.reset_index(drop=True)
@@ -277,7 +259,6 @@ class ComparableDemandModel:
                 rolling_params = dict(window=wins, min_periods=wins)
 
             expended_data = pd.merge(time_series_data, T_start, how='right')
-            # expended_data['transaction_month_end'] = T_end
 
             foreward_cumsum = lambda s: s.fillna(0).rolling(**rolling_params).sum().shift(-(wins - 1))
 
@@ -293,7 +274,7 @@ class ComparableDemandModel:
                 .dropna(subset=self.quantity) \
                 .fillna(method='bfill') \
                 .fillna(method='ffill')
-            final_data['num_of_remaining_units'] = final_data['num_of_units'] - expended_data[self.quantity].shift(
+            final_data['num_of_remaining_units'] = final_data['proj_num_of_units'] - expended_data[self.quantity].shift(
                 1).cumsum().fillna(0)
 
             return final_data.reset_index(drop=True)
@@ -301,35 +282,24 @@ class ComparableDemandModel:
         rolling_data = pd.DataFrame()
         for project in data.dw_project_id.unique():
 
-            for bed in bed_nums:
+            temp = data.loc[[project]].copy()
 
-                temp = data[
-                    (data.dw_project_id == project) &
-                    (data.num_of_bedrooms == bed)
-                    ].copy()
+            if temp.empty:
+                continue
 
-                if temp.empty:
-                    continue
+            processed_temp = rolling_process(temp)
 
-                processed_temp = rolling_process(temp)
-
-                rolling_data = pd.concat([rolling_data, processed_temp], axis='rows', ignore_index=True)
+            rolling_data = pd.concat([rolling_data, processed_temp], axis='rows', ignore_index=True)
 
         rolling_data = self.calculate_launching_period(rolling_data)
 
-        return rolling_data
+        return rolling_data.set_index('dw_project_id', drop=False)
 
     def preprocess_forcasting_data(self, min_proj_size=50):
 
         data = self.query_raw_data(mode='forecasting')
-
-        local_keys = ['dw_project_id', 'num_of_bedrooms']
-        data = data.merge(self.data[local_keys], how='left', on=local_keys, indicator=True)
-        data = data[
-            (data['_merge'] == 'left_only') &
-            (data['proj_num_of_units'] > min_proj_size)
-            ]
-
+        data = data[~data.dw_project_id.isin(self.data.dw_project_id)]
+        data = data[data['proj_num_of_units'] > min_proj_size]
         data = self.calculate_launching_period(data)
 
         return data
@@ -351,6 +321,34 @@ class ComparableDemandModel:
 
         return period_data
 
+    def get_rebased_project_data(self, dw_project_id):
+
+        try:
+            trans_status = self.available_projects.loc[dw_project_id]['with_trans']
+        except KeyError:
+            return pd.DataFrame()
+
+        if trans_status:
+            data_source = self.data
+        else:
+            data_source = self.forecasting_data
+
+        project_data = data_source.loc[[dw_project_id]]
+
+        return project_data
+
+    def get_adjusted_project_data(self, dw_project_id):
+
+        rebased_project_data = self.get_rebased_project_data(dw_project_id)
+
+        if rebased_project_data.empty:
+            return rebased_project_data
+
+        coef_to_multiply = self.query_adjust_coef(rebased_project_data)
+
+        adjusted_project_data = rebased_project_data.copy()
+        adjusted_project_data[self.price] = adjusted_project_data[self.price] * coef_to_multiply
+
     def __post_init__(self):
         self.data = self.preprocess_base_training_data()
         self.forecasting_data = self.preprocess_forcasting_data()
@@ -364,15 +362,17 @@ class ComparableDemandModel:
         training_data['with_trans'] = True
         forecasting_data['with_trans'] = False
 
-        retain_cols = ['project_name', 'num_of_bedrooms', 'with_trans']
+        retain_cols = ['dw_project_id', 'project_name', 'with_trans']
 
-        return pd.concat(
+        ap = pd.concat(
             [
                 training_data[retain_cols].drop_duplicates(),
                 forecasting_data[retain_cols].drop_duplicates()
             ],
             ignore_index=True
-        )
+        ).set_index('dw_project_id', drop=False)
+
+        return ap
 
     def query_nearby_projects(
             self,
@@ -455,7 +455,6 @@ class ComparableDemandModel:
     def filter_comparable_projects(
             self,
             project_id,
-            num_of_bedrooms,
             price_range: tuple,
             project_data=None,
             max_launching_period=None,
@@ -467,10 +466,7 @@ class ComparableDemandModel:
         training_data = self.data
 
         if project_data is None:
-            project_data = training_data[
-                (training_data['dw_project_id'] == project_id) &
-                (training_data['num_of_bedrooms'] == num_of_bedrooms)
-                ]
+            project_data = self.get_rebased_project_data(project_id)
 
         project_size = training_data.proj_num_of_units.iloc[0]
 
@@ -490,7 +486,6 @@ class ComparableDemandModel:
 
         comp_data = training_data[
             (training_data.dw_project_id.isin(nearby_projects.nearby_project_id)) &
-            (training_data.num_of_bedrooms == num_of_bedrooms) &
             (training_data.price.between(min_price * 0.9, max_price * 1.1)) &
             (training_data.proj_num_of_units.between(project_size * 0.25, project_size * 1.75))
             ]
@@ -527,7 +522,6 @@ class ComparableDemandModel:
     def fit_project_room_demand_model(
             self,
             project_id,
-            num_of_bedroom,
             price_range=None,
             exclude_ids=None,
             project_data=None
@@ -547,16 +541,7 @@ class ComparableDemandModel:
             return local_model
 
         if project_data is None:
-            project_data = self.data[
-                (self.data[self.project_key] == project_id) &
-                (self.data['num_of_bedrooms'] == num_of_bedroom)
-                ].copy()
-
-            if project_data.empty:
-                project_data = self.forecasting_data[
-                    (self.forecasting_data[self.project_key] == project_id) &
-                    (self.forecasting_data['num_of_bedrooms'] == num_of_bedroom)
-                    ].copy()
+            project_data = self.get_rebased_project_data(project_id)
 
         coef_to_multiply = self.query_adjust_coef(project_data)
 
@@ -575,7 +560,6 @@ class ComparableDemandModel:
 
             training_data = self.filter_comparable_projects(
                 project_id,
-                num_of_bedroom,
                 price_range=price_range,
                 nearby_projects=nearby_projects,
                 project_data=project_data
@@ -596,7 +580,6 @@ class ComparableDemandModel:
 
                     training_data = self.filter_comparable_projects(
                         project_id,
-                        num_of_bedroom,
                         price_range=(proj_avg_price / 0.9 * 0.8, proj_avg_price / 1.1 * 1.1),
                         nearby_projects=nearby_projects,
                         project_data=project_data

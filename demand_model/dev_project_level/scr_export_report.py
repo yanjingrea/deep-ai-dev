@@ -1,4 +1,4 @@
-from demand_model.weekly_report.scr_test import *
+from demand_model.dev_project_level.scr_test import *
 from demand_model.weekly_report.func_LaTex_code import *
 
 file_3d_name = f'weekly_report_3d_{td}.py'
@@ -39,7 +39,7 @@ for p in paths_df.page.unique():
 
     c = page_content.apply(
         lambda row: create_column(
-            f'{int(row.num_of_bedrooms)} bedrooms',
+            f'{row["project_name"]}',
             row.paths
         ), axis=1
     )
@@ -54,7 +54,7 @@ metrics_df = test_results
 
 metrics_df['error_to_sales'] = metrics_df['pred_sales'] / metrics_df['sales'] - 1
 metrics_df['error_to_stock'] = (
-        (metrics_df['pred_sales'] - metrics_df['sales']) / metrics_df['num_of_units']
+        (metrics_df['pred_sales'] - metrics_df['sales']) / metrics_df['proj_num_of_units']
 )
 metrics_df['period_label'] = metrics_df['launching_period'].apply(
     lambda a: 'first' if a <= 3 else 'rest'
@@ -64,7 +64,6 @@ error_cols = ['error_to_sales', 'error_to_stock']
 distribution_cols = {}
 for idx, col in enumerate(error_cols):
     fig, ax = plt.subplots(figsize=(8, 6))
-    sns.set(style="darkgrid")
     metrics_df.groupby('period_label').apply(
         lambda df: sns.histplot(
             df,
@@ -107,18 +106,16 @@ images_codes += f"""
     """
 
 projects_error = metrics_df.groupby(
-    ['project_name', 'num_of_bedrooms'], as_index=False
+    ['project_name'], as_index=False
 )[error_cols].apply(lambda df: df[error_cols].abs().mean())
-projects_error['num_of_bedrooms'] = projects_error['num_of_bedrooms'].astype(int)
 
-
-summary_table = projects_error.describe().copy()
+summary_table = projects_error.describe()
 
 format_func = lambda x: '{:.2f}'.format(x * 100) + r'\%'
 for ec in error_cols:
     projects_error[ec] = projects_error[ec].apply(format_func)
 
-for idx in [1, 2]:
+for idx in [0, 1]:
     summary_table.iloc[1:, idx] = summary_table.iloc[1:, idx].apply(format_func)
 
 rename_dict = {
@@ -159,7 +156,7 @@ print(images_codes)
 print(table_codes)
 
 latex_dir = '/Users/wuyanjing/PycharmProjects/presentation/src/'
-file_name = f'weekly_report_template_{td}.tex'
+file_name = f'weekly_report_project_{td}.tex'
 
 with open(f"{latex_dir}{file_name}", "w") as file:
     latex_content = r"""
