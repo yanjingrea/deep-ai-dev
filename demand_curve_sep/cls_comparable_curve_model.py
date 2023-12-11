@@ -8,11 +8,11 @@ from typing import Optional, Union, Literal
 import numpy as np
 import pandas as pd
 
-from demand_model.cls_linear_demand_model import RoomTypeDemandModel
-from demand_model.cls_ds_partial_coef import FloorCoef, AreaCoef, TimeIndex, ZoneCoef
+from demand_curve_sep.cls_linear_demand_model import RoomTypeDemandModel
+from demand_curve_sep.cls_ds_partial_coef import FloorCoef, AreaCoef, TimeIndex, ZoneCoef
 from constants.redshift import query_data
 from constants.utils import OUTPUT_DIR
-from demand_model.scr_neighborhood_clusters import clustering_res
+from demand_curve_sep.scr_neighborhood_clusters import clustering_res
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
@@ -46,16 +46,18 @@ class ComparableDemandModel:
     def transactions_query(self):
         return f"""
             base_property_price as (
-            select
-                *,
-                row_number() over (partition by dw_property_id order by transaction_date desc) as seq
-            from data_science.ui_master_sg_transactions_view_filled_features_condo a
-            join data_science.ui_master_sg_project_geo_view_filled_features_condo b
-                using (dw_project_id)
-            where a.property_type_group = 'Condo'
-                and transaction_sub_type = 'new sale'
-                and transaction_date < '{datetime.today().replace(day=1).date()}'
-        )
+                select * from (
+                    select
+                        *,
+                        row_number() over (partition by dw_property_id order by transaction_date desc) as seq
+                    from data_science.ui_master_sg_transactions_view_filled_features_condo a
+                    join data_science.ui_master_sg_project_geo_view_filled_features_condo b
+                        using (dw_project_id)
+                    where a.property_type_group = 'Condo'
+                        and transaction_sub_type = 'new sale'
+                        and transaction_date < '{datetime.today().replace(day=1).date()}'
+                ) where seq = 1
+            )
         """
 
     @property
@@ -109,7 +111,7 @@ class ComparableDemandModel:
         }.get(mode, lambda a: a)
 
         raw_data_path = f'{OUTPUT_DIR}{mode}_data.plk'
-        if False:
+        if True:
             data = pickle.load(open(raw_data_path, 'rb'))
         else:
             data = query_data(
@@ -277,24 +279,28 @@ class ComparableDemandModel:
                 rolling_params = dict(window=wins, min_periods=wins)
 
             expended_data = pd.merge(time_series_data, T_start, how='right')
-            # expended_data['transaction_month_end'] = T_end
 
-            foreward_cumsum = lambda s: s.fillna(0).rolling(**rolling_params).sum().shift(-(wins - 1))
+            foreward_cumsum = lambda s: s.fillna(0).rolling(**rolling_params).sum()
 
             Q = foreward_cumsum(expended_data[self.quantity])
             PQ = foreward_cumsum(expended_data[self.quantity] * expended_data[self.price])
-
             P = PQ / Q
 
-            expended_data[self.quantity] = Q
-            expended_data[self.price] = P
+            cumsum_quantity = expended_data[self.quantity].fillna(0).cumsum()
+            S = time_series_data['num_of_units'].iloc[0] - cumsum_quantity.shift(1).fillna(0)
 
-            final_data = expended_data[expended_data[self.quantity] != 0] \
-                .dropna(subset=self.quantity) \
-                .fillna(method='bfill') \
-                .fillna(method='ffill')
-            final_data['num_of_remaining_units'] = final_data['num_of_units'] - expended_data[self.quantity].shift(
-                1).cumsum().fillna(0)
+            re_expended_data = expended_data.copy()
+
+            re_expended_data[self.quantity] = Q
+            re_expended_data[self.price] = P
+            re_expended_data['num_of_remaining_units'] = S.shift(wins - 1)
+            re_expended_data['transaction_month'] = T_start.shift(wins - 1).dropna()
+
+            final_data = re_expended_data.iloc[wins - 1:].dropna(subset=self.quantity)
+            final_data = final_data[final_data[self.quantity] != 0].fillna(method='bfill').fillna(method='ffill')
+
+            if np.any(final_data['num_of_remaining_units'] < 0):
+                raise Exception(f'please check the method of rolling method')
 
             return final_data.reset_index(drop=True)
 
@@ -302,7 +308,6 @@ class ComparableDemandModel:
         for project in data.dw_project_id.unique():
 
             for bed in bed_nums:
-
                 temp = data[
                     (data.dw_project_id == project) &
                     (data.num_of_bedrooms == bed)
@@ -498,6 +503,10 @@ class ComparableDemandModel:
         if max_launching_period:
             comp_data = comp_data[comp_data['launching_period'] <= max_launching_period]
 
+            if False:
+                import seaborn as sns
+                sns.scatterplot(comp_data, x=self.price, y=self.quantity, hue='project_name')
+
         outliers_idx_1 = comp_data[
             (comp_data[self.price] < comp_data[self.price].quantile(0.25)) &
             (comp_data[self.quantity] < comp_data[self.quantity].quantile(0.25))
@@ -523,6 +532,28 @@ class ComparableDemandModel:
         coef_to_multiply = 1 / local_area_coef / local_floor_coef / local_zone_coef
 
         return coef_to_multiply
+
+    @staticmethod
+    def query_current_index():
+
+        return time_index.reference_table.current_index.iloc[0]
+
+    @staticmethod
+    def query_time_rebase_index(project_data):
+
+        to_time_index = lambda ym: f'{ym.year}' + "{:02d}".format(ym.month)
+        launch_year_month = project_data.launch_year_month.iloc[0]
+        launch_year_month_index = to_time_index(launch_year_month)
+        # adjust_index = time_index.get_coef(to_time_index(project_data.transaction_month.iloc[0]))
+
+        row = time_index.reference_table[
+            time_index.reference_table['transaction_month_index'] == launch_year_month_index
+            ]
+
+        rebase_index = row['rebase_index'].iloc[0]
+        current_index = row['current_index'].iloc[0]
+
+        return 1 / current_index * rebase_index
 
     def fit_project_room_demand_model(
             self,

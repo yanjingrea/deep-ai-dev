@@ -1,5 +1,5 @@
 import pandas as pd
-from demand_model.cls_comparable_curve_model import ComparableDemandModel
+from demand_curve_sep.cls_comparable_curve_model import ComparableDemandModel
 
 comparable_demand_model = ComparableDemandModel()
 

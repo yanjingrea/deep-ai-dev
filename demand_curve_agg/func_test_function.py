@@ -8,12 +8,12 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 
 from constants.utils import NatureD, NatureL
-from demand_model.scr_common_training import *
+from demand_curve_agg.scr_training import *
 
 # -------------------------------------------------
 
 td = datetime.today()
-dev_dir = dirname(realpath(__file__)) + f'/output/dev/{td.date()}/'
+dev_dir = dirname(realpath(__file__)) + f'/output/dev_project_level/{td.date()}/'
 dev_figure_dir = dev_dir + f'figures/'
 dev_data_dir = dev_dir + f'data/'
 dev_3d_dir = dev_dir + f'3d/'
@@ -38,27 +38,23 @@ for mode, directory_path in zip(
 @dataclass
 class PathsCollections:
     project_name: str
-    num_of_bedrooms: int
     paths: str
 
 
 def get_report_results(
         project_name,
-        num_of_bedroom,
         image_paths,
         test_results=None
 ):
     adjusted_project_data = get_adjusted_project_data(
-        project_name,
-        num_of_bedroom
+        project_name
     ).copy().reset_index(drop=True)
 
     if adjusted_project_data.empty:
         return None, None
 
-    linear_model, adjusted_training_data = comparable_demand_model.fit_project_room_demand_model(
-        project_id=adjusted_project_data.dw_project_id.iloc[0],
-        num_of_bedroom=num_of_bedroom
+    linear_model, adjusted_training_data = demand_model.fit_project_room_demand_model(
+        project_id=adjusted_project_data.dw_project_id.iloc[0]
     )
 
     if test_results is not None:
@@ -70,8 +66,7 @@ def get_report_results(
                 adjusted_project_data[
                     [
                         'project_name',
-                        'num_of_bedrooms',
-                        'num_of_units',
+                        'proj_num_of_units',
                         'launching_period',
                         'num_of_remaining_units',
                         quantity,
@@ -83,13 +78,13 @@ def get_report_results(
         )
 
     adjusted_training_data.to_csv(
-        dev_data_dir + f'{project_name} {int(num_of_bedroom)}-bedroom.csv'
+        dev_data_dir + f'{project_name}.csv'
     )
 
     adjusted_project_data = pd.concat(
         [
             adjusted_project_data,
-            comparable_demand_model.prepare_forecast_demand_curve_data(adjusted_project_data)
+            demand_model.prepare_forecast_demand_curve_data(adjusted_project_data)
         ],
         ignore_index=True
     )
@@ -139,10 +134,10 @@ def get_report_results(
             linestyles='--',
         )
         ax.hlines(
-            y=adjusted_project_data['num_of_units'].iloc[-1],
+            y=adjusted_project_data['proj_num_of_units'].iloc[-1],
             **common_params,
             colors='grey',
-            label='num_of_units'.replace('_', ' ')
+            label='proj_num_of_units'.replace('_', ' ')
         )
 
         scatter_params = dict(
@@ -181,13 +176,13 @@ def get_report_results(
         plt.legend()
         if mode == 'dev':
             manual_label = ''
-            title = f'{project_name} {int(num_of_bedroom)}-bedroom'
+            title = f'{project_name}'
             ax.set_title(f'{title}\n{manual_label}')
             plt.savefig(dev_figure_dir + f'dev-{title}{manual_label}.png', dpi=300)
             plt.close()
 
         else:
-            title = f'{project_name} {int(num_of_bedroom)}-bedroom'
+            title = f'{project_name}'
             ax.set_title(f'{title}')
             report_path = title.replace('-', '_').replace(' ', '_')
             plt.savefig(report_dir + f"{report_path}.png", dpi=300)
@@ -196,7 +191,6 @@ def get_report_results(
             image_paths += [
                 PathsCollections(
                     project_name=project_name,
-                    num_of_bedrooms=num_of_bedroom,
                     paths=report_path
                 )
             ]

@@ -2,8 +2,8 @@ from logzero import logger
 
 import streamlit as st
 
-from demand_model.streamlit_web_app import core_function
-from demand_model.streamlit_web_app.core_function import *
+from demand_curve_sep.streamlit_app import func_core_function
+from demand_curve_sep.streamlit_app.func_core_function import *
 
 
 padding = 0

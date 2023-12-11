@@ -1,5 +1,5 @@
 import pandas as pd
-from demand_model.dev_project_level.cls_project_demand_model import ProjectDemandModel
+from dev_project_level.cls_project_demand_model import ProjectDemandModel
 
 demand_model = ProjectDemandModel()
 demand_model.__setattr__('max_year_gap', 10)

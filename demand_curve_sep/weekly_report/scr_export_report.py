@@ -1,5 +1,5 @@
-from demand_model.weekly_report.scr_test import *
-from demand_model.weekly_report.func_LaTex_code import *
+from demand_curve_sep.weekly_report.scr_test import *
+from demand_curve_sep.weekly_report.func_LaTex_code import *
 
 file_3d_name = f'weekly_report_3d_{td}.py'
 

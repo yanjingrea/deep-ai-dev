@@ -1,5 +1,5 @@
 import numpy as np
-from demand_model.weekly_report.func_test_function import *
+from demand_curve_sep.weekly_report.func_helper_function import *
 
 min_stock = 10
 min_proj_size = 50

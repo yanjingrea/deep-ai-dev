@@ -1,5 +1,5 @@
 import numpy as np
-from demand_model.dev_project_level.func_test_function import *
+from dev_project_level.func_test_function import *
 
 min_stock = 10
 min_proj_size = 50

@@ -7,8 +7,8 @@ import pandas as pd
 import statsmodels.api as sm
 import statsmodels.regression.linear_model
 
-from demand_model.cls_plotly_demand_curve import PlotlyDemandCurve
-from demand_model.cls_plt_demand_curve import PltDemandCurve
+from demand_curve_sep.cls_plotly_demand_curve import PlotlyDemandCurve
+from demand_curve_sep.cls_plt_demand_curve import PltDemandCurve
 
 
 @dataclass
