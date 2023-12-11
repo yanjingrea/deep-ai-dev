@@ -1,6 +1,6 @@
 import streamlit as st
 from demand_model.streamlit_web_app.core_function import *
-from demand_model.scr_project_location import *
+from demand_curve_on_map.func_helper import *
 
 st.set_page_config(
     page_title="New Launch Condo Demand Curve Lab",
@@ -40,42 +40,23 @@ with st.sidebar.form(key="my_form"):
 
     pressed = st.form_submit_button("Locate Comparable Projects")
 
-col1, col2 = st.columns([5, 5])
+col, _ = st.columns([9, 1])
+tab1, tab2 = col.tabs(['map', 'curve'])
 
-with col1:
-
-    filtered_data = locate_comparable_projects(
-        selectbox_project,
-        selectbox_bed_num
-    )
-
-    filtered_projects = filtered_data.project_name.unique()
-
-    multi_projects = st.multiselect(
-        f"""select projects to display""",
-        filtered_projects,
-        default=filtered_projects
-    )
-
-    min_p = filtered_data.price.min()
-    max_p = filtered_data.price.max() * 1.2
-
-    selected_price_range = st.slider(
-        f"select price range",
-        min_p * 0.8,
-        max_p * 1.2,
-        (min_p * 0.9, max_p * 1.1)
-    )
-
-    pressed_col1 = st.button("Display")
-
-    if pressed_col1:
-        container = st.container()
-        multi_filtered_projects = filtered_data[
-            (filtered_data['project_name'].isin(multi_projects)) &
-            (filtered_data['price'].between(*selected_price_range))
-            ]
-
-        container.empty().plotly_chart(
-            plot_projects_location(multi_filtered_projects)
+if pressed:
+    tab1.empty().plotly_chart(
+            plot_project_locations(
+                locate_comparable_projects(
+                    selectbox_project,
+                    selectbox_bed_num
+                )
+            )
         )
+
+    tab2.empty().plotly_chart(
+        plot_2d_demand_curve(
+            selectbox_project,
+            selectbox_bed_num,
+            dev_mode=True
+        )
+    )

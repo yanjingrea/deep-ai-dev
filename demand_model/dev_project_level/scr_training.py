@@ -2,6 +2,7 @@ import pandas as pd
 from demand_model.dev_project_level.cls_project_demand_model import ProjectDemandModel
 
 demand_model = ProjectDemandModel()
+demand_model.__setattr__('max_year_gap', 10)
 
 available_projects = demand_model.available_projects
 available_projects.set_index(['project_name'], inplace=True)

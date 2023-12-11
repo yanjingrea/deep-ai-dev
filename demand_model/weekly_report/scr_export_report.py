@@ -93,7 +93,7 @@ formula = r"""
         \footnotesize
         Error Metrics \\
         $\text{error to sales} = (\text{predictive sales} - \text{actual sales}) / \text{actual sales}$ \\
-        $\text{error to stock} = (\text{predictive sales} - \text{actual sales}) / \text{actual stock}$ \\
+        $\text{error to stock} = (\text{predictive sales} - \text{actual sales}) / \text{actual stock}$
         \vspace{1em}
 """
 images_codes += f"""

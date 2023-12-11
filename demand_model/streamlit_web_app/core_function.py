@@ -1,3 +1,4 @@
+import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 
@@ -30,7 +31,8 @@ def get_linear_model_and_training_data(
 
 def plot_2d_demand_curve(
         project_name,
-        num_of_bedroom
+        num_of_bedroom,
+        dev_mode=False
 ):
     adjusted_project_data = get_adjusted_project_data(
         project_name,
@@ -43,7 +45,9 @@ def plot_2d_demand_curve(
     adjusted_project_data = pd.concat(
         [
             adjusted_project_data,
-            comparable_demand_model.prepare_forecast_demand_curve_data(adjusted_project_data)
+            comparable_demand_model.prepare_forecast_demand_curve_data(
+                adjusted_project_data
+            )
         ],
         ignore_index=True
     )
@@ -62,7 +66,7 @@ def plot_2d_demand_curve(
         adjusted_project_data[price].max() * 1.2
     )
 
-    linear_model, _ = comparable_demand_model.fit_project_room_demand_model(
+    linear_model, adjusted_training_data = comparable_demand_model.fit_project_room_demand_model(
         project_id=adjusted_project_data.dw_project_id.iloc[0],
         num_of_bedroom=num_of_bedroom
     )
@@ -78,6 +82,9 @@ def plot_2d_demand_curve(
     fig = make_subplots()
 
     for idx, row in adjusted_project_data.iterrows():
+
+        if row['num_of_remaining_units'] <= 0:
+            continue
 
         temp_period = row['launching_period']
         temp_display_date = row['date_to_display']
@@ -100,18 +107,37 @@ def plot_2d_demand_curve(
         )
 
     if adjusted_project_data[quantity].mean() != 0:
-        scatter_data = adjusted_project_data.iloc[:-1]
+
+        if dev_mode:
+            scatter_data = pd.concat(
+                [adjusted_project_data.iloc[:-1], adjusted_training_data],
+                ignore_index=True
+            )
+
+            colors_list = px.colors.qualitative.Set1 + px.colors.qualitative.Light24_r
+            training_projects = adjusted_training_data['project_name'].unique()
+            colors_map = pd.Series(
+                index=training_projects,
+                data=colors_list[:len(training_projects)]
+            )
+
+            marker_color = scatter_data['project_name'].apply(lambda p: colors_map.loc[p])
+
+        else:
+            scatter_data = adjusted_project_data.iloc[:-1]
+            marker_color = 'grey'
 
         fig.add_trace(
             go.Scatter(
                 x=scatter_data[price],
                 y=scatter_data[quantity],
                 mode='markers',
-                marker_color='grey',
+                marker_color=marker_color,
                 marker=dict(
-                    opacity=0.3,
+                    opacity=0.5,
                     size=16
                 ),
+                hovertext=scatter_data['project_name'],
                 text=scatter_data['date_to_display'],
                 textposition="top right",
                 name='transactions'
@@ -126,5 +152,3 @@ def plot_2d_demand_curve(
         )
 
     return fig
-
-
