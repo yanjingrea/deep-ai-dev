@@ -36,8 +36,14 @@ class RoomTypeDemandModel:
 
         y, X = self.process_data(training_subset)
 
+        Q = np.exp(y)
+        w = Q**(Q/X['proj_num_of_units'])
+        # w = Q/training_subset['proj_num_of_units']
+        # w = (Q/X['proj_num_of_units'])
+        # w = np.log(Q**2/training_subset['num_of_units'])
+
         try:
-            self.core_model = sm.WLS(y, X, weights=np.log(y)).fit()
+            self.core_model = sm.WLS(y, X, weights=w).fit()
         except np.linalg.LinAlgError:
             self.core_model = sm.GLS(y, X).fit()
 

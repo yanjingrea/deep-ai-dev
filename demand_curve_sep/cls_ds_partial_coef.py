@@ -188,6 +188,70 @@ class TimeIndex(PartialCoef):
             return None
 
 
+@dataclass
+class MRTCoef(PartialCoef):
+    @property
+    def query_scripts(self):
+        scripts = """
+            select
+                    meters_to_mrt as distance_lower_bound,
+                    lag(meters_to_mrt, 1) over (order by meters_to_mrt desc) as next_distance,
+                    case
+                        when next_distance is null
+                        then meters_to_mrt * 1000
+                        else next_distance
+                    end as distance_upper_bound,
+                    (
+                        select coefficient
+                        from data_science_test.partial_coef_meters_to_mrt_sg_country
+                        where coef_change = 0
+                    ) as base_coef,
+                    1 / (1 + coefficient - base_coef) as mrt_adjust_coef
+            from data_science_test.partial_coef_meters_to_mrt_sg_country
+            """
+        return scripts
+
+    def query_coef_table(self):
+        df = query_data(self.query_scripts)
+
+        return df[['distance_lower_bound', 'distance_upper_bound', 'mrt_adjust_coef']]
+
+    def __post_init__(self):
+        super().__post_init__()
+
+    def get_coef(self, floor_area_sqft):
+
+        if floor_area_sqft < self.reference_table['distance_lower_bound'].min():
+            return self.reference_table['mrt_adjust_coef'].min()
+        elif floor_area_sqft > self.reference_table['distance_upper_bound'].max():
+            return self.reference_table['mrt_adjust_coef'].max()
+
+        try:
+            return self.reference_table[
+                (self.reference_table['distance_lower_bound'] <= floor_area_sqft) &
+                (self.reference_table['distance_upper_bound'] > floor_area_sqft)
+                ]['mrt_adjust_coef'].iloc[0]
+        except IndexError:
+            return None
+
+    def get_segment_coef(self, segment_range: tuple):
+        try:
+            a = self.reference_table[
+                (self.reference_table['distance_lower_bound'] >= segment_range[0]) &
+                (self.reference_table['distance_upper_bound'] <= segment_range[1])
+                ]
+
+            return a.rename(
+                columns={
+                    # 'area_lower_bound': 'floor_area_sqft',
+                    'area_adjust_coef': 'coef'
+                }
+            )
+
+        except IndexError:
+            return None
+
+
 class ZoneCoef(PartialCoef):
     @property
     def query_scripts(self):

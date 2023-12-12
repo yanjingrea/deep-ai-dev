@@ -45,13 +45,13 @@ tab1, tab2 = col.tabs(['map', 'curve'])
 
 if pressed:
     tab1.empty().plotly_chart(
-            plot_project_locations(
-                locate_comparable_projects(
-                    selectbox_project,
-                    selectbox_bed_num
-                )
+        plot_project_locations(
+            locate_comparable_projects(
+                selectbox_project,
+                selectbox_bed_num
             )
         )
+    )
 
     tab2.empty().plotly_chart(
         plot_2d_demand_curve(

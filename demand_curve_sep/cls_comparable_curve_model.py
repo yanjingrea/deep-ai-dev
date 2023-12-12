@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from demand_curve_sep.cls_linear_demand_model import RoomTypeDemandModel
-from demand_curve_sep.cls_ds_partial_coef import FloorCoef, AreaCoef, TimeIndex, ZoneCoef
+from demand_curve_sep.cls_ds_partial_coef import FloorCoef, AreaCoef, TimeIndex, ZoneCoef, MRTCoef
 from constants.redshift import query_data
 from constants.utils import OUTPUT_DIR
 from demand_curve_sep.scr_neighborhood_clusters import clustering_res
@@ -22,6 +22,7 @@ floor_coef = FloorCoef()
 area_coef = AreaCoef()
 time_index = TimeIndex()
 zone_coef = ZoneCoef()
+mrt_coef = MRTCoef()
 
 
 @dataclass
@@ -80,6 +81,7 @@ class ComparableDemandModel:
             base_property_price as (
                 select
                     c.dw_project_id,
+                    c.dw_building_id,
                     a.project_launch_month::varchar as transaction_month_index,
                     num_of_bedrooms,
                     floor_area_sqft,
@@ -118,7 +120,8 @@ class ComparableDemandModel:
                 f"""
                 with base_index as ({time_index.query_scripts}),
                 base_floor_coef as ({floor_coef.query_scripts}),
-                base_area_coef as ({area_coef.query_scripts}), 
+                base_area_coef as ({area_coef.query_scripts}),
+                base_mrt_coef as ({mrt_coef.query_scripts}), 
                 {price_query},
                 base_property_panel as (
                     select
@@ -134,19 +137,31 @@ class ComparableDemandModel:
                             unit_price_psf
                                 * floor_adjust_coef
                                 * area_adjust_coef
-                                * zone_adjust_coef
+                                --* zone_adjust_coef
                                 * time_adjust_coef
+                                --* mrt_adjust_coef
                         ) as price,
-                        {0 if mode == 'forecasting' else 'count(*)'} as sales
+                        {0 if mode == 'forecasting' else 'count(*)'} as sales,
+                        avg(case when meters_to_mrt is null then 2000 else meters_to_mrt end) as meters_to_mrt
                     from base_property_price a
                     left outer join data_science.ui_master_sg_project_geo_view_filled_features_condo b
-                        using (dw_project_id)
-                    left outer join  base_index c
-                        using (transaction_month_index)
-                    left outer join  base_floor_coef f
-                        using (address_floor_num)
+                                    using (dw_project_id)
+                    left outer join (
+                                        select
+                                            dw_building_id,
+                                            meters_to_mrt
+                                        from data_science.ui_master_sg_building_view_filled_features_condo
+                                    ) m
+                                    using (dw_building_id)
+                    left outer join base_index c
+                                    using (transaction_month_index)
+                    left outer join base_floor_coef f
+                                    using (address_floor_num)
                     left outer join base_area_coef g
-                       on a.floor_area_sqft >= g.area_lower_bound and a.floor_area_sqft < g.area_upper_bound
+                                    on a.floor_area_sqft >= g.area_lower_bound and
+                                       a.floor_area_sqft < g.area_upper_bound
+                    --left outer join base_mrt_coef h
+                    --                on m.meters_to_mrt between h.distance_lower_bound and h.distance_upper_bound
                     left outer join (
                         {zone_coef.query_scripts}
                     ) d
@@ -195,6 +210,7 @@ class ComparableDemandModel:
                         when num_of_bedrooms = 4 then project_avg_size_of_four_rm
                         when num_of_bedrooms = 5 then project_avg_size_of_five_rm
                     end as floor_area_sqm,
+                    avg(meters_to_mrt) over (partition by dw_project_id) as meters_to_mrt,
                     proj_max_floor,
                     zone,
                     neighborhood
@@ -241,7 +257,7 @@ class ComparableDemandModel:
             lambda row: len(
                 pd.period_range(
                     start=row['launch_year_month'],
-                    end=row['transaction_month_end'],
+                    end=row['transaction_month'],
                     freq='M'
                 )
             ), axis=1
@@ -282,8 +298,10 @@ class ComparableDemandModel:
 
             foreward_cumsum = lambda s: s.fillna(0).rolling(**rolling_params).sum()
 
-            Q = foreward_cumsum(expended_data[self.quantity])
-            PQ = foreward_cumsum(expended_data[self.quantity] * expended_data[self.price])
+            filled_monthly_quantity = expended_data[self.quantity].fillna(0)
+
+            Q = foreward_cumsum(filled_monthly_quantity)
+            PQ = foreward_cumsum(filled_monthly_quantity * expended_data[self.price].fillna(0))
             P = PQ / Q
 
             cumsum_quantity = expended_data[self.quantity].fillna(0).cumsum()
@@ -475,7 +493,7 @@ class ComparableDemandModel:
             project_data = training_data[
                 (training_data['dw_project_id'] == project_id) &
                 (training_data['num_of_bedrooms'] == num_of_bedrooms)
-                ]
+            ]
 
         project_size = training_data.proj_num_of_units.iloc[0]
 
@@ -507,19 +525,26 @@ class ComparableDemandModel:
                 import seaborn as sns
                 sns.scatterplot(comp_data, x=self.price, y=self.quantity, hue='project_name')
 
-        outliers_idx_1 = comp_data[
-            (comp_data[self.price] < comp_data[self.price].quantile(0.25)) &
-            (comp_data[self.quantity] < comp_data[self.quantity].quantile(0.25))
-            ].index
+        if True:
 
-        outliers_idx_2 = comp_data[
-            (comp_data[self.price] > comp_data[self.price].quantile(0.75)) &
-            (comp_data[self.quantity] > comp_data[self.quantity].quantile(0.75))
-            ].index
+            sales_percent = comp_data[self.quantity] / comp_data['num_of_units']
 
-        filtered_comp_data = comp_data[
-            ~comp_data.index.isin(np.append(outliers_idx_1, outliers_idx_2))
-        ]
+            outliers_idx_1 = comp_data[
+                (comp_data[self.price] < comp_data[self.price].quantile(0.25)) &
+                (sales_percent < sales_percent.quantile(0.25))
+                ].index
+
+            outliers_idx_2 = comp_data[
+                (comp_data[self.price] > comp_data[self.price].quantile(0.75)) &
+                (sales_percent > sales_percent.quantile(0.75))
+                ].index
+
+            filtered_comp_data = comp_data[
+                ~comp_data.index.isin(np.append(outliers_idx_1, outliers_idx_2))
+            ]
+
+        else:
+            filtered_comp_data = comp_data.copy()
 
         return filtered_comp_data
 
@@ -529,7 +554,10 @@ class ComparableDemandModel:
         local_area_coef = area_coef.get_coef(project_data.floor_area_sqm.iloc[0] * 10.76)
         local_floor_coef = floor_coef.get_coef(project_data.proj_max_floor.iloc[0] // 2)
         local_zone_coef = zone_coef.get_coef(project_data.transaction_month.iloc[0].year, project_data.iloc[0].zone)
-        coef_to_multiply = 1 / local_area_coef / local_floor_coef / local_zone_coef
+        # local_mrt_coef = mrt_coef.get_coef(project_data.meters_to_mrt.iloc[0])
+        # coef_to_multiply = 1 / local_area_coef / local_floor_coef / local_zone_coef
+        coef_to_multiply = 1 / local_area_coef / local_floor_coef
+        # coef_to_multiply=1
 
         return coef_to_multiply
 
@@ -561,6 +589,7 @@ class ComparableDemandModel:
             num_of_bedroom,
             price_range=None,
             exclude_ids=None,
+            include_ids=None,
             project_data=None
     ):
         threshold = -3
@@ -599,10 +628,34 @@ class ComparableDemandModel:
         project_neighborhood = project_data.neighborhood.iloc[0]
         nearby_projects = self.query_clusters_projects(project_neighborhood)
 
+        print()
+        print(project_data['project_name'].iloc[0], f'{num_of_bedroom}-bedroom')
         for max_distance in np.arange(1, n_attempt + 1) * distance_gap:
 
             if max_distance != distance_gap:
                 nearby_projects = max_radius_projects[max_radius_projects.distance <= max_distance]
+
+                # nearby_projects = pd.concat(
+                #     [
+                #         nearby_projects,
+                #         max_radius_projects[max_radius_projects.distance <= max_distance][['nearby_project_id']]
+                #     ],
+                #     ignore_index=True
+                # ).drop_duplicates()
+
+                print(f'finding comparable projects within {max_distance / 1000 :.0f}km...')
+
+            else:
+                print(f'finding comparable projects in the same clusters...')
+
+            if include_ids is not None:
+                nearby_projects = pd.concat(
+                    [
+                        nearby_projects,
+                        pd.DataFrame({'nearby_project_id': include_ids})
+                    ],
+                    ignore_index=True
+                )
 
             training_data = self.filter_comparable_projects(
                 project_id,
@@ -612,8 +665,17 @@ class ComparableDemandModel:
                 project_data=project_data
             ).copy()
 
-            if exclude_ids:
+            if exclude_ids is not None:
                 training_data = training_data[~training_data[self.project_key].isin(exclude_ids)]
+            if include_ids is not None:
+
+                to_add_ids = [i for i in include_ids if i not in training_data.dw_project_id]
+
+                include_data = self.data[
+                    (self.data[self.project_key].isin(to_add_ids)) &
+                    (self.data['num_of_bedrooms'] == num_of_bedroom)
+                ]
+                training_data = pd.concat([training_data, include_data], ignore_index=True)
 
             if (len(training_data) < 10) or (training_data.nunique()['dw_project_id'] < 3):
                 if max_distance != n_attempt * distance_gap:
@@ -628,7 +690,7 @@ class ComparableDemandModel:
                     training_data = self.filter_comparable_projects(
                         project_id,
                         num_of_bedroom,
-                        price_range=(proj_avg_price / 0.9 * 0.8, proj_avg_price / 1.1 * 1.1),
+                        price_range=(proj_avg_price / 0.9 * 0.8, proj_avg_price / 1.1 * 1.2),
                         nearby_projects=nearby_projects,
                         project_data=project_data
                     ).copy()
@@ -646,12 +708,18 @@ class ComparableDemandModel:
                     continue
 
                 elif len(adj_training_data) > 10:
-                    for i in np.arange(1, n_attempt + 1):
+
+                    print('finding comparable project randomly...')
+
+                    for i in np.arange(1, (n_attempt + 1) * 2):
                         random_sample = adj_training_data.sample(min(n_attempt, len(adj_training_data) - 1))
                         random_model = fit_local_linear_model(random_sample)
                         if random_model.params[self.price] > -threshold:
                             continue
                         else:
+
+                            print('fail to get qualified curve by randomly filtering')
+
                             linear_model = random_model
                             adj_training_data = random_sample
                             break
