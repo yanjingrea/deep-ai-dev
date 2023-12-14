@@ -12,7 +12,7 @@ from demand_curve_sep.cls_plt_demand_curve import PltDemandCurve
 
 
 @dataclass
-class RoomTypeDemandModel:
+class BaseLinearDemandModel:
     quantity: str
     price: str
     features: list

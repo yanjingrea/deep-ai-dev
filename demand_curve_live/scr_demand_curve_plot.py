@@ -19,16 +19,16 @@ bedrooms_list = [2, 3, 4]
 models_path = model_dir + f'{project_name}'.replace(' ', '_')
 
 linear_models = {}
-for num_of_bedroom in bedrooms_list:
+for num_of_bedrooms in bedrooms_list:
 
     rebased_project_data = get_rebased_project_data(
         project_name,
-        num_of_bedroom
+        num_of_bedrooms
     )
 
     adjusted_project_data = get_adjusted_project_data(
         project_name,
-        num_of_bedroom
+        num_of_bedrooms
     )
 
     project_id = adjusted_project_data.dw_project_id.iloc[0]
@@ -41,7 +41,7 @@ for num_of_bedroom in bedrooms_list:
     manual_min = rebased_project_data.price.min()
     manual_max = rebased_project_data.price.max()
 
-    if num_of_bedroom == 2:
+    if num_of_bedrooms == 2:
 
         manual_price_range = (
             manual_min,
@@ -56,13 +56,13 @@ for num_of_bedroom in bedrooms_list:
 
     linear_model, training_data = comparable_demand_model.fit_project_room_demand_model(
         project_id,
-        num_of_bedroom,
+        num_of_bedrooms,
         price_range=manual_price_range,
         exclude_ids=[project_id],
         # include_ids=['7a0eaa8196d9676a189aa4a7fbabc7e5']
     )
 
-    linear_models[num_of_bedroom] = linear_model
+    linear_models[num_of_bedrooms] = linear_model
 
 
     def normalize_date(date):
@@ -134,7 +134,7 @@ for num_of_bedroom in bedrooms_list:
 
     plt.legend()
 
-    title = f'{project_name} {int(num_of_bedroom)}-bedroom'
+    title = f'{project_name} {int(num_of_bedrooms)}-bedroom'
     ax.set_title(f'{title}')
     report_path = title.replace('-', '_').replace(' ', '_')
     plt.savefig(figure_dir + f"{report_path}.png", dpi=300)

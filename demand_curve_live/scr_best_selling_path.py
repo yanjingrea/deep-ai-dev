@@ -11,7 +11,8 @@ from demand_curve_sep.scr_common_training import (
 
 from demand_curve_live.scr_get_paths import *
 from demand_curve_live.scr_get_model import linear_models as models
-from optimization.revenue_optimization import PathRevenue, PathsCollection, customize_optimization
+from optimization.cls_base_simulation_results import UnitSalesPath, PathsCollection
+from optimization.cls_revenue_optimization import customize_optimization
 
 project_name = 'The Arden'
 launching_period = 1
@@ -23,13 +24,6 @@ price_ranges = {
     3: (1550, 1850),
     4: (1600, 1900)
 }
-
-initial_paths = {
-    2: (1771,)*max_launching_period,
-    3: (1744,)*max_launching_period,
-    4: (1744, )*max_launching_period
-}
-
 
 temp_paths = {}
 for num_of_bedrooms in bedrooms_list:
@@ -89,7 +83,7 @@ for num_of_bedrooms in bedrooms_list:
             revenue = valid_quantity_path * valid_psf_path * floor_area_sqft
             discounted_revenue = revenue / (1 + discount_rate) ** valid_period_path
 
-            results = PathRevenue(
+            results = UnitSalesPath(
                 **{
                     'bed_num': num_of_bedrooms,
                     'quantity_path': valid_quantity_path.astype(int),
@@ -144,31 +138,3 @@ fig.savefig(figure_dir + file_name.replace(' ', '_') + '.png', format='png')
 res = suggested_paths.to_dataframe()
 res.to_csv(table_dir + file_name.replace(' ', '_') + '.csv', index=False)
 
-print()
-
-if False:
-    def process_config(cfg: ProjectConfig, num_of_remaining_units):
-        res = adjusted_project_data.copy()
-        launch_year_month = pd.to_datetime(f'{cfg.launching_year}-{cfg.launching_month:02d}-01')
-        config_data = pd.DataFrame(
-            {
-                'project_name': [cfg.project_name],
-                'num_of_bedrooms': num_of_bedrooms,
-                'launch_year_month': launch_year_month,
-                'transaction_month': launch_year_month,
-                'launching_period': np.nan,
-                'sales': np.nan,
-                'price': np.nan,
-                'num_of_units': cfg.get_units_count(num_of_bedrooms),
-                'num_of_remaining_units': num_of_remaining_units,
-                'proj_num_of_units': sum(cfg.total_unit_count),
-                'tenure': 1 if cfg.tenure == 'freehold' else 0,
-                'floor_area_sqm': cfg.avg_unit_size_per_bed(num_of_bedrooms),
-                'proj_max_floor': cfg.max_floor,
-            }
-        )
-
-        for k, v in config_data.items():
-            res[k] = v
-
-        return res

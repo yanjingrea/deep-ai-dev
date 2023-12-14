@@ -8,7 +8,7 @@ from typing import Optional, Union, Literal
 import numpy as np
 import pandas as pd
 
-from demand_curve_sep.cls_linear_demand_model import RoomTypeDemandModel
+from demand_curve_sep.cls_linear_demand_model import BaseLinearDemandModel
 from demand_curve_sep.cls_ds_partial_coef import FloorCoef, AreaCoef, TimeIndex, ZoneCoef, MRTCoef
 from constants.redshift import query_data
 from constants.utils import OUTPUT_DIR
@@ -552,8 +552,8 @@ class ComparableDemandModel:
     def query_adjust_coef(project_data):
 
         local_area_coef = area_coef.get_coef(project_data.floor_area_sqm.iloc[0] * 10.76)
-        local_floor_coef = floor_coef.get_coef(project_data.proj_max_floor.iloc[0] // 2)
-        local_zone_coef = zone_coef.get_coef(project_data.transaction_month.iloc[0].year, project_data.iloc[0].zone)
+        local_floor_coef = floor_coef.get_coef(max(project_data.proj_max_floor.iloc[0] // 2, 1))
+        # local_zone_coef = zone_coef.get_coef(project_data.transaction_month.iloc[0].year, project_data.iloc[0].zone)
         # local_mrt_coef = mrt_coef.get_coef(project_data.meters_to_mrt.iloc[0])
         # coef_to_multiply = 1 / local_area_coef / local_floor_coef / local_zone_coef
         coef_to_multiply = 1 / local_area_coef / local_floor_coef
@@ -598,7 +598,7 @@ class ComparableDemandModel:
 
         def fit_local_linear_model(data):
 
-            local_model = RoomTypeDemandModel(
+            local_model = BaseLinearDemandModel(
                 quantity=self.quantity,
                 price=self.price,
                 features=self.features

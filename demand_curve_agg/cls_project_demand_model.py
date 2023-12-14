@@ -8,7 +8,7 @@ from typing import Optional, Union, Literal
 import numpy as np
 import pandas as pd
 
-from demand_curve_sep.cls_linear_demand_model import RoomTypeDemandModel
+from demand_curve_sep.cls_linear_demand_model import BaseLinearDemandModel
 from demand_curve_sep.cls_ds_partial_coef import FloorCoef, AreaCoef, TimeIndex, ZoneCoef
 from constants.redshift import query_data
 from constants.utils import OUTPUT_DIR
@@ -532,7 +532,7 @@ class ProjectDemandModel:
 
         def fit_local_linear_model(data):
 
-            local_model = RoomTypeDemandModel(
+            local_model = BaseLinearDemandModel(
                 quantity=self.quantity,
                 price=self.price,
                 features=self.features
