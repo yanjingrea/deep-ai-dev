@@ -166,19 +166,20 @@ class BaseBestPathModel:
         #         time_index_to_multiply=time_index_to_multiply
         #     )
 
-        coef_to_multiply = self.get_update_coef(
-            new_cfg=cfg,
-            time_index_to_multiply=time_index_to_multiply
-        )
-
         valid_psf_path = np.array([])
         valid_quantity_path = np.array([])
         floor_area_sqft = data_row['floor_area_sqm'].iloc[0] * 10.76
         stock = data_row['num_of_units'].iloc[0]
 
         for idx, p in enumerate(psf_path):
-            t = 1 + idx * 3
+            # todo: manual alert
+            t = min(1 + idx * 3, 4)
             remaining_units = int(stock - valid_quantity_path.sum())
+
+            coef_to_multiply = self.get_update_coef(
+                new_cfg=cfg,
+                time_index_to_multiply=time_index_to_multiply if t == 1 else 1
+            )
 
             data = data_row.copy()
             data['price'] = p / coef_to_multiply
@@ -269,6 +270,26 @@ class BaseBestPathModel:
 
         return res
 
+    def get_projects_current_path(
+        self,
+        price_psf,
+        time_index_to_multiply=1,
+        discount_rate=0.025
+    ) -> Union[UnitSalesPath, float]:
+
+        res = self.calculate_total_revenue(
+            cfg=self.initial_config,
+            psf_path=(price_psf,) * 20,
+            time_index_to_multiply=time_index_to_multiply,
+            full_output=True,
+            discount_rate=discount_rate
+        )
+
+        if sum(res.quantity_path) != self.initial_config.get_units_count(self.num_of_bedrooms):
+            print_in_green_bg(f'{self.num_of_bedrooms}-bed: fail to sell out.')
+
+        return res
+
 
 @dataclass
 class BestPathsModels:
@@ -347,6 +368,24 @@ class BestPathsModels:
             )
             for bed_num, bed_model in self.transformed_models.items()
             if bed_num in cfg.available_bed
+        }
+
+        return ProjectSalesPaths(suggestion_paths)
+
+    def get_current_selling_paths(
+        self,
+        price_dict,
+        time_index_to_multiply=1,
+        discount_rate=0.025
+    ):
+        suggestion_paths = {
+            bed_num: bed_model.get_projects_current_path(
+                price_psf=price_dict[bed_num],
+                time_index_to_multiply=time_index_to_multiply,
+                discount_rate=discount_rate
+            )
+            for bed_num, bed_model in self.transformed_models.items()
+            if bed_num in self.initial_config.available_bed
         }
 
         return ProjectSalesPaths(suggestion_paths)
@@ -540,7 +579,7 @@ class BestLandModel:
                 time_index_to_multiply=time_index_to_multiply
             )
 
-            paths_record = suggestion_paths.to_dataframe()
+            paths_record = suggestion_paths.detailed_dataframe()
             paths_record['num_of_units'] = paths_record['bed_num'].apply(
                 lambda b: c.cfg.get_units_count(bed=b)
             )

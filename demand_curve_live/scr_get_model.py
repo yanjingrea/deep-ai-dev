@@ -13,7 +13,9 @@ project_name = 'The Arden'
 launching_period = 1
 bedrooms_list = [2, 3, 4]
 
-models_path = model_dir + f'{project_name}'.replace(' ', '_')
+from datetime import datetime
+today = datetime.today().date()
+models_path = model_dir + f'{project_name} {today}'.replace(' ', '_')
 
 if True:
     linear_models = pickle.load(open(models_path, 'rb'))

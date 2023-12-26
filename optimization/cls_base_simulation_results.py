@@ -87,6 +87,10 @@ class ProjectSalesPaths:
         """
         return sum(self.paths[b].discounted_total_revenue for b in self.paths.keys())
 
+    @property
+    def max_length(self) -> int:
+        return max(len(self.paths[b].psf_path) for b in self.paths.keys())
+
     def plot(self):
         """
         Plot the selling paths for different bedroom types.
@@ -143,7 +147,7 @@ class ProjectSalesPaths:
 
         return fig, axs
 
-    def to_dataframe(self):
+    def detailed_dataframe(self):
         """
         Convert selling paths data to a DataFrame.
 
@@ -159,6 +163,23 @@ class ProjectSalesPaths:
             bed_df['launching_period'] = np.arange(1, len(bed_path.psf_path) + 1)
 
             res = pd.concat([res, bed_df], ignore_index=True)
+
+        return res
+
+    def summarized_dataframe(self):
+
+        available_bed = self.paths.keys()
+
+        res = pd.DataFrame(
+            {
+                'Bedroom Type': [f'{b} Bedroom' for b in available_bed],
+                'Avg Price PSF': [self.paths[b].avg_psf for b in available_bed],
+                'Num of Months': [len(self.paths[b].quantity_path)*3 for b in available_bed],
+                'Revenue': [self.paths[b].total_revenue for b in available_bed],
+                'Discounted Total Revenue': self.discounted_revenue,
+                'Total Revenue': self.revenue,
+            }
+        )
 
         return res
 

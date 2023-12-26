@@ -1,7 +1,9 @@
-import os
 import pickle
-from os.path import dirname, realpath
 import seaborn as sns
+
+from datetime import datetime
+
+today = datetime.today().date()
 
 from demand_curve_sep.scr_common_training import (
     price,
@@ -16,7 +18,9 @@ project_name = 'The Arden'
 launching_period = 1
 bedrooms_list = [2, 3, 4]
 
-models_path = model_dir + f'{project_name}'.replace(' ', '_')
+manual_hyper_param = 1.0172420456415858
+
+models_path = model_dir + f'{project_name} {today}'.replace(' ', '_')
 
 linear_models = {}
 for num_of_bedrooms in bedrooms_list:
@@ -45,7 +49,7 @@ for num_of_bedrooms in bedrooms_list:
 
         manual_price_range = (
             manual_min,
-            manual_max
+            manual_max / 1.1 * 1.4
         )
 
     else:
@@ -59,7 +63,7 @@ for num_of_bedrooms in bedrooms_list:
         num_of_bedrooms,
         price_range=manual_price_range,
         exclude_ids=[project_id],
-        # include_ids=['7a0eaa8196d9676a189aa4a7fbabc7e5']
+        include_ids=['7a0eaa8196d9676a189aa4a7fbabc7e5']
     )
 
     linear_models[num_of_bedrooms] = linear_model
@@ -89,9 +93,10 @@ for num_of_bedrooms in bedrooms_list:
     # notes: since we are extracting the first month's demand curve
     # we need to rebase the price back to launch time
     index_to_multiply = comparable_demand_model.query_time_rebase_index(adjusted_project_data)
+    manual_index_to_multiply = index_to_multiply * manual_hyper_param
 
     rebase_curve = PltDemandCurve(
-        P=curve.P * index_to_multiply,
+        P=curve.P * manual_index_to_multiply,
         Q=curve.Q
     )
 
@@ -137,10 +142,10 @@ for num_of_bedrooms in bedrooms_list:
     title = f'{project_name} {int(num_of_bedrooms)}-bedroom'
     ax.set_title(f'{title}')
     report_path = title.replace('-', '_').replace(' ', '_')
-    plt.savefig(figure_dir + f"{report_path}.png", dpi=300)
+    plt.savefig(figure_dir + f"{today} {report_path}.png", dpi=300)
     plt.close()
 
-    training_data.to_csv(model_dir + f"training_{report_path}.csv", index=False)
+    training_data.to_csv(model_dir + f"training_{report_path}_{today}.csv", index=False)
 
 pickle.dump(
     linear_models, open(models_path, 'wb')
