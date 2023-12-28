@@ -37,7 +37,12 @@ class UnitSalesPath:
 
     @property
     def avg_psf(self):
-        return self.psf_path.mean()
+        return np.sum(
+            [
+                self.quantity_path[i] * self.psf_path[i]
+                for i in np.arange(len(self.quantity_path))
+            ]
+        ) / self.quantity_path.sum()
 
 
 @dataclass
@@ -174,7 +179,7 @@ class ProjectSalesPaths:
             {
                 'Bedroom Type': [f'{b} Bedroom' for b in available_bed],
                 'Avg Price PSF': [self.paths[b].avg_psf for b in available_bed],
-                'Num of Months': [len(self.paths[b].quantity_path)*3 for b in available_bed],
+                'Est Num of Months to Sell Out': [len(self.paths[b].quantity_path) * 3 for b in available_bed],
                 'Revenue': [self.paths[b].total_revenue for b in available_bed],
                 'Discounted Total Revenue': self.discounted_revenue,
                 'Total Revenue': self.revenue,
@@ -242,6 +247,7 @@ class ConfigRevenue:
                 'Suggested Area (sqm)': [self.cfg.avg_unit_size_per_bed(i) for i in self.cfg.available_bed],
                 'Est Selling Price PSF': [
                     np.round(self.avg_psf[i - 1], 2) for i in self.cfg.available_bed
-                ]
+                ],
+                'Est Discounted Total Revenue': self.paths.discounted_revenue
             }
         )

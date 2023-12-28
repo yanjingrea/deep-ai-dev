@@ -15,7 +15,7 @@ from demand_curve_live.scr_get_model import linear_models as models
 land_constraints = LandConstraints(
     max_height=5,
     max_dwelling_units=113,
-    gross_floor_area=9687.0  # calculate from the project's current config
+    gross_floor_area=9665.0  # calculate from the project's current config (9687)
 )
 
 initial_config = ProjectConfig(
@@ -60,13 +60,19 @@ current_price = {
 }
 
 price_ranges = {
-    2: (1750, 1930),
-    3: (1680, 1850),
-    4: (1710, 1900)
+    2: (1750, 1848),
+    3: (1710, 1831),
+    4: (1710, 1831)
 }
 
 max_launching_period = 12
-index_to_multiply = 1.0729082749614085
+
+index_to_multiply = {
+    2: 1.0729082749614085,
+    3: 1.0729082749614085,
+    4: 1.0729082749614085 * 1.0213900761510275
+}
+
 max_growth_psf = 60
 
 paths_model = BestPathsModels(

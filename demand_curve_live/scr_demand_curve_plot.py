@@ -1,4 +1,6 @@
 import pickle
+
+import pandas as pd
 import seaborn as sns
 
 from datetime import datetime
@@ -95,6 +97,9 @@ for num_of_bedrooms in bedrooms_list:
     index_to_multiply = comparable_demand_model.query_time_rebase_index(adjusted_project_data)
     manual_index_to_multiply = index_to_multiply * manual_hyper_param
 
+    if num_of_bedrooms == 4:
+        manual_index_to_multiply *= 1.0213900761510275
+
     rebase_curve = PltDemandCurve(
         P=curve.P * manual_index_to_multiply,
         Q=curve.Q
@@ -146,6 +151,50 @@ for num_of_bedrooms in bedrooms_list:
     plt.close()
 
     training_data.to_csv(model_dir + f"training_{report_path}_{today}.csv", index=False)
+
+    # ----------------------------------------------------------------------------------------------------------
+    # 2nd quarter curve
+    launching_period2 = 4
+
+    row2 = row.copy()
+    row2['launching_period'] = launching_period2
+    row2['num_of_remaining_units'] = row2['num_of_units'] - {2: 28, 3: 5, 4: 5}[num_of_bedrooms]
+
+    t = pd.date_range(row['transaction_month_end'].iloc[0], periods=4, freq='MS')
+
+    display_date2 = (
+        f"from {normalize_date(t[1])} "
+        f"to {normalize_date(t[-1])}"
+    )
+
+    curve2 = linear_model.extract_2d_demand_curve(
+        row2,
+        launching_period=launching_period2,
+        price_range=(price_range[0] * index_to_multiply, price_range[1] * index_to_multiply),
+        fig_format='plt'
+    )
+
+    rebase_curve2 = PltDemandCurve(
+        P=curve2.P,
+        Q=curve2.Q
+    )
+
+    fig2, ax2 = plt.subplots(figsize=(8, 6))
+    fig2, ax2 = rebase_curve2.plot(
+        fig=fig2,
+        ax=ax2,
+        color=NatureD['blue'],
+        label=f'Demand Curve \n{display_date2}'
+    )
+
+    title = f'{project_name} {int(num_of_bedrooms)}-bedroom'
+    report_path = title.replace('-', '_').replace(' ', '_')
+    ax2.set_title(f'{title}')
+
+    plt.legend()
+
+    plt.savefig(figure_dir + f"{today} {report_path} period{launching_period2}.png", dpi=300)
+    plt.close()
 
 pickle.dump(
     linear_models, open(models_path, 'wb')

@@ -185,7 +185,7 @@ class BaseBestPathModel:
             data['price'] = p / coef_to_multiply
             data['launching_period'] = t
             data['num_of_remaining_units'] = remaining_units
-            q = int(self.demand_model.predict(data).iloc[0])
+            q = int(round(self.demand_model.predict(data).iloc[0]))
 
             valid_psf_path = np.append(valid_psf_path, p)
             valid_quantity_path = np.append(valid_quantity_path, q)
@@ -234,12 +234,15 @@ class BaseBestPathModel:
             lower_bound = np.random.uniform(*price_range, size=1)
 
             if max_growth_psf:
-                upper_bound = lower_bound + max_growth_psf
+                temp_max_psf = lower_bound + max_growth_psf
+
             else:
-                upper_bound = min(
-                    lower_bound * (1 + max_growth_rate) ** path_length,
-                    max(*price_range)
-                )
+                temp_max_psf = lower_bound * (1 + max_growth_rate) ** path_length
+
+            upper_bound = min(
+                temp_max_psf,
+                max(*price_range)
+            )
 
             return tuple(
                 np.sort(
@@ -333,7 +336,7 @@ class BestPathsModels:
         self,
         price_ranges,
         path_lengths: Union[dict, int],
-        time_index_to_multiply=1,
+        time_index_to_multiply: Union[dict, int, float] = 1,
         max_growth_psf=None,
         max_growth_rate=0.02,
         discount_rate=0.025
@@ -361,7 +364,10 @@ class BestPathsModels:
                 cfg,
                 price_range=price_ranges[bed_num],
                 path_length=path_lengths[bed_num] if isinstance(path_lengths, dict) else path_lengths,
-                time_index_to_multiply=time_index_to_multiply,
+                time_index_to_multiply=(
+                    time_index_to_multiply[bed_num]
+                    if isinstance(time_index_to_multiply, dict) else time_index_to_multiply
+                ),
                 max_growth_psf=max_growth_psf,
                 max_growth_rate=max_growth_rate,
                 discount_rate=discount_rate
@@ -375,13 +381,18 @@ class BestPathsModels:
     def get_current_selling_paths(
         self,
         price_dict,
-        time_index_to_multiply=1,
+        time_index_to_multiply: Union[dict, int, float] = 1,
         discount_rate=0.025
     ):
+
         suggestion_paths = {
             bed_num: bed_model.get_projects_current_path(
                 price_psf=price_dict[bed_num],
-                time_index_to_multiply=time_index_to_multiply,
+                time_index_to_multiply=(
+                    time_index_to_multiply[bed_num]
+                    if isinstance(time_index_to_multiply, dict)
+                    else time_index_to_multiply
+                ),
                 discount_rate=discount_rate
             )
             for bed_num, bed_model in self.transformed_models.items()
@@ -496,7 +507,11 @@ class BestLandModel:
                             if isinstance(max_periods, dict) else max_periods
                         ),
                         full_output=True,
-                        time_index_to_multiply=time_index_to_multiply
+                        time_index_to_multiply=(
+                            time_index_to_multiply[b]
+                            if isinstance(time_index_to_multiply, dict)
+                            else time_index_to_multiply
+                        )
                     )
                     for b in np.arange(1, 6) if cfg.get_units_count(b) != 0
                 }
@@ -594,12 +609,12 @@ class BestLandModel:
             res = ConfigRevenue(cfg=c.cfg, paths=suggestion_paths)
             res.summary()
             temp = res.to_dataframe()
-            temp['total_revenue'] = res.revenue
+            temp['Total Revenue'] = res.revenue
 
             output_df = pd.concat([output_df, temp], ignore_index=False)
 
         from demand_curve_live.scr_get_paths import table_dir
-        tr_mill = output_df['total_revenue'].max() / 10 ** 6
+        tr_mill = output_df['Total Revenue'].max() / 10 ** 6
         output_df.to_csv(
             table_dir +
             f'best_land_use_{self.initial_config.project_name.replace(" ", "_")}_{tr_mill: .2f}m.csv'
