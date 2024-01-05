@@ -1,16 +1,13 @@
 import numpy as np
-import pandas as pd
 
 from constants.utils import print_in_green_bg
 from demand_curve_sep.scr_common_training import (
-    price,
-    quantity,
     get_adjusted_project_data,
     comparable_demand_model
 )
 
-from demand_curve_live.scr_get_paths import *
-from demand_curve_live.scr_get_model import linear_models as models
+from demand_curve_live.the_arden.scr_get_paths import *
+from demand_curve_live.the_arden.scr_get_model import linear_models as models
 from optimization.cls_base_simulation_results import UnitSalesPath, PathsCollection
 from optimization.cls_revenue_optimization import customize_optimization
 

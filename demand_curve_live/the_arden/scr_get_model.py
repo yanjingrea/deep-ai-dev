@@ -1,12 +1,6 @@
 import pickle
 
-from demand_curve_sep.scr_common_training import (
-    price,
-    quantity,
-    get_adjusted_project_data,
-    comparable_demand_model
-)
-from demand_curve_live.scr_get_paths import model_dir
+from demand_curve_live.the_arden.scr_get_paths import model_dir
 
 
 project_name = 'The Arden'

@@ -14,7 +14,7 @@ from demand_curve_sep.scr_common_training import (
     comparable_demand_model, get_rebased_project_data
 )
 from demand_curve_sep.cls_plt_demand_curve import *
-from demand_curve_live.scr_get_paths import *
+from demand_curve_live.the_arden.scr_get_paths import *
 
 project_name = 'The Arden'
 launching_period = 1

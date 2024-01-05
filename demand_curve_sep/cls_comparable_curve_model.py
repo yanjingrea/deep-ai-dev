@@ -113,7 +113,7 @@ class ComparableDemandModel:
         }.get(mode, lambda a: a)
 
         raw_data_path = f'{OUTPUT_DIR}{mode}_data.plk'
-        if True:
+        if False:
             data = pickle.load(open(raw_data_path, 'rb'))
         else:
             data = query_data(

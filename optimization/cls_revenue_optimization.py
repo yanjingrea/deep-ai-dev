@@ -153,7 +153,10 @@ class BaseBestPathModel:
         psf_path,
         time_index_to_multiply=1,
         full_output=False,
-        discount_rate=0.025
+        discount_rate=0.025,
+        remaining_stock=None,
+        starting_period=1,
+        last_period_discount=None
     ) -> Union[UnitSalesPath, float]:
 
         data_row = self.process_config(cfg)
@@ -169,11 +172,15 @@ class BaseBestPathModel:
         valid_psf_path = np.array([])
         valid_quantity_path = np.array([])
         floor_area_sqft = data_row['floor_area_sqm'].iloc[0] * 10.76
-        stock = data_row['num_of_units'].iloc[0]
+
+        if remaining_stock is None:
+            stock = data_row['num_of_units'].iloc[0]
+        else:
+            stock = remaining_stock
 
         for idx, p in enumerate(psf_path):
             # todo: manual alert
-            t = min(1 + idx * 3, 4)
+            t = min((1 + idx * 3) + starting_period, 4)
             remaining_units = int(stock - valid_quantity_path.sum())
 
             coef_to_multiply = self.get_update_coef(
@@ -185,7 +192,14 @@ class BaseBestPathModel:
             data['price'] = p / coef_to_multiply
             data['launching_period'] = t
             data['num_of_remaining_units'] = remaining_units
-            q = int(round(self.demand_model.predict(data).iloc[0]))
+
+            if (idx == len(psf_path) - 1) & (last_period_discount is not None):
+                quantity_discount = last_period_discount
+            else:
+                quantity_discount = 1
+
+            raw_q = self.demand_model.predict(data, quantity_discount).iloc[0]
+            q = int(round(raw_q))
 
             valid_psf_path = np.append(valid_psf_path, p)
             valid_quantity_path = np.append(valid_quantity_path, q)
@@ -219,16 +233,24 @@ class BaseBestPathModel:
     def get_projects_best_path(
         self,
         cfg,
-        path_length=8,
+        path_length: Union[int, float] = 8,
         price_range=(1600, 1900),
         time_index_to_multiply=1,
         max_growth_psf=None,
         max_growth_rate=0.02,
-        discount_rate=0.025
+        discount_rate=0.025,
+        remaining_stock=None,
+        starting_period=1
     ) -> Union[UnitSalesPath, float]:
 
         if cfg is None:
             cfg = self.initial_config
+
+        if isinstance(path_length, float):
+            local_path_length = int(np.ceil(path_length))
+            last_period_discount = path_length - np.floor(path_length)
+        else:
+            last_period_discount = None
 
         def path_generator(current_path, temperature):
             lower_bound = np.random.uniform(*price_range, size=1)
@@ -237,7 +259,7 @@ class BaseBestPathModel:
                 temp_max_psf = lower_bound + max_growth_psf
 
             else:
-                temp_max_psf = lower_bound * (1 + max_growth_rate) ** path_length
+                temp_max_psf = lower_bound * (1 + max_growth_rate) ** local_path_length
 
             upper_bound = min(
                 temp_max_psf,
@@ -246,7 +268,7 @@ class BaseBestPathModel:
 
             return tuple(
                 np.sort(
-                    np.random.uniform(lower_bound, upper_bound, size=path_length)
+                    np.random.uniform(lower_bound, upper_bound, size=local_path_length)
                 )
             )
 
@@ -257,18 +279,24 @@ class BaseBestPathModel:
                 psf_path=psf_path,
                 time_index_to_multiply=time_index_to_multiply,
                 full_output=full_output,
-                discount_rate=discount_rate
+                discount_rate=discount_rate,
+                remaining_stock=remaining_stock,
+                starting_period=starting_period,
+                last_period_discount=last_period_discount
             )
 
         suggestion_path = customize_optimization(
-            initial_state=(price_range[0],) * path_length,
+            initial_state=(price_range[0],) * local_path_length,
             state_generator=path_generator,
             revenue_calculator=revenue_calculator
         )
 
         res = revenue_calculator(suggestion_path, full_output=True)
 
-        if sum(res.quantity_path) != cfg.get_units_count(self.num_of_bedrooms):
+        if remaining_stock is None:
+            remaining_stock = cfg.get_units_count(self.num_of_bedrooms)
+
+        if sum(res.quantity_path) != remaining_stock:
             print_in_green_bg(f'{self.num_of_bedrooms}-bed: fail to sell out.')
 
         return res
@@ -335,11 +363,13 @@ class BestPathsModels:
     def get_best_selling_paths(
         self,
         price_ranges,
-        path_lengths: Union[dict, int],
+        path_lengths: Union[dict, int, float],
         time_index_to_multiply: Union[dict, int, float] = 1,
         max_growth_psf=None,
         max_growth_rate=0.02,
-        discount_rate=0.025
+        discount_rate=0.025,
+        remaining_stocks=None,
+        starting_period=1
     ) -> ProjectSalesPaths:
 
         """
@@ -370,7 +400,9 @@ class BestPathsModels:
                 ),
                 max_growth_psf=max_growth_psf,
                 max_growth_rate=max_growth_rate,
-                discount_rate=discount_rate
+                discount_rate=discount_rate,
+                remaining_stock=remaining_stocks[bed_num] if isinstance(remaining_stocks, dict) else remaining_stocks,
+                starting_period=starting_period
             )
             for bed_num, bed_model in self.transformed_models.items()
             if bed_num in cfg.available_bed
@@ -568,7 +600,7 @@ class BestLandModel:
             The results are stored in CSV files for further analysis.
         """
 
-        from demand_curve_live.scr_get_paths import table_dir
+        from demand_curve_live.the_arden.scr_get_paths import table_dir
 
         promising_configs = self.get_promising_configs(
             project_config_params=project_config_params,
@@ -613,7 +645,7 @@ class BestLandModel:
 
             output_df = pd.concat([output_df, temp], ignore_index=False)
 
-        from demand_curve_live.scr_get_paths import table_dir
+        from demand_curve_live.the_arden.scr_get_paths import table_dir
         tr_mill = output_df['Total Revenue'].max() / 10 ** 6
         output_df.to_csv(
             table_dir +

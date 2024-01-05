@@ -162,10 +162,9 @@ error_codes += f"""
 """
 
 # error comparison
-his_path = '/Users/wuyanjing/PycharmProjects/app/demand_curve_sep/weekly_report/output/historical_error.csv'
+his_path = '/demand_curve_sep/weekly_report/output/sep_historical_error.csv'
 his_data = pd.read_csv(his_path, header=0)
 his_data['report date'] = pd.to_datetime(his_data['report date'], dayfirst=True)
-
 
 to_record_row = [pd.to_datetime(td)]
 for pct in ['mean', '25%', '75%']:
@@ -178,9 +177,7 @@ his_data.reset_index(inplace=True)
 his_slide_cols = {}
 x = his_data['report date']
 for idx, error_type in enumerate(['error to sales', 'error to stock']):
-
     fig, ax = plt.subplots(figsize=(8, 6))
-
     for pct in ['', ' 25th', ' 75th']:
 
         col = error_type + pct
@@ -258,7 +255,7 @@ with open(f"{latex_dir}{file_name}", "w") as file:
     \begin{document}
         
         \maketitlepage
-        \begin{frame}{Overview} 
+        \begin{frame}[t]{Overview} 
             \tableofcontents
         \end{frame}
 

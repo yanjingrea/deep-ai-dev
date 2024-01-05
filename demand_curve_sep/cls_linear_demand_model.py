@@ -51,9 +51,9 @@ class BaseLinearDemandModel:
 
         return self
 
-    def predict(self, data):
+    def predict(self, data, last_period_discount=1):
         _, X = self.process_data(data)
-        temp_y_hat = np.exp(self.core_model.predict(X))
+        temp_y_hat = np.exp(self.core_model.predict(X)) * last_period_discount
         pred_Q = np.clip(
             temp_y_hat,
             0,
