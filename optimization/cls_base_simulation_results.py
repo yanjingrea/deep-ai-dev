@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Mapping, Optional
 
 import numpy as np
 import pandas as pd
@@ -15,6 +15,14 @@ This file contains essential classes describing the results of best-selling path
 
 set_plot_format(plt)
 bed_nums = np.arange(1, 6)
+
+@dataclass
+class PathGeneratorParams:
+    path_length: int = 8,
+    price_range: tuple = (1600, 1900),
+    max_growth_psf = None,
+    max_growth_rate: Optional[float] = 0.02
+
 
 
 @dataclass
@@ -43,6 +51,10 @@ class UnitSalesPath:
                 for i in np.arange(len(self.quantity_path))
             ]
         ) / self.quantity_path.sum()
+
+    @property
+    def path_lengths(self):
+        return ...
 
 
 @dataclass
@@ -180,6 +192,7 @@ class ProjectSalesPaths:
                 'Bedroom Type': [f'{b} Bedroom' for b in available_bed],
                 'Avg Price PSF': [self.paths[b].avg_psf for b in available_bed],
                 'Est Num of Months to Sell Out': [len(self.paths[b].quantity_path) * 3 for b in available_bed],
+                'Discounted Revenue': [self.paths[b].discounted_total_revenue for b in available_bed],
                 'Revenue': [self.paths[b].total_revenue for b in available_bed],
                 'Discounted Total Revenue': self.discounted_revenue,
                 'Total Revenue': self.revenue,

@@ -19,12 +19,13 @@ td = datetime.today()
 dev_dir = dirname(realpath(__file__)) + f'/output/dev/{td.date()}/'
 dev_figure_dir = dev_dir + f'figures/'
 dev_data_dir = dev_dir + f'data/'
+dev_res_dir = dev_dir + f'res/'
 
 report_dir = f'/Users/wuyanjing/PycharmProjects/presentation/src/images/{td.date()}/'
 
 for mode, directory_path in zip(
-        ['dev_figures', 'dev_table', 'report'],
-        [dev_figure_dir, dev_data_dir, report_dir]
+        ['dev_figures', 'dev_table', 'report', 'dev_results'],
+        [dev_figure_dir, dev_data_dir, report_dir, dev_res_dir]
 ):
     if not os.path.exists(directory_path):
         try:
@@ -211,6 +212,11 @@ def get_report_results(
             )
 
             scatterplot_data = adjusted_project_data.iloc[:-1]
+
+            n_display = 5
+            if len(scatterplot_data) >= n_display:
+                scatterplot_data = scatterplot_data.sample(n_display)
+
             scatter_params['hue'] = scatterplot_data['date_to_display']
         else:
             scatterplot_data = pd.DataFrame()

@@ -362,8 +362,8 @@ class BaseCMData:
         return data
 
     def prepare_forecast_demand_curve_data(
-            self,
-            project_data
+        self,
+        project_data
     ):
         period_data = project_data.iloc[[-1]].copy()
 

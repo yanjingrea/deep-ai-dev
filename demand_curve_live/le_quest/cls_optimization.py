@@ -5,10 +5,10 @@ import numpy as np
 import pandas as pd
 
 from constants.utils import print_in_green_bg
+from demand_curve_hybrid.scr_coef import query_adjust_coef
 from demand_curve_sep.cls_linear_demand_model import BaseLinearDemandModel
-from demand_curve_sep.scr_common_training import comparable_demand_model
 from optimization.cls_base_simulation_results import (
-    UnitSalesPath, ProjectSalesPaths, ConfigRevenue, PathGeneratorParams
+    UnitSalesPath, ProjectSalesPaths, ConfigRevenue
 )
 from optimization.project_config import ProjectConfig
 from src.main.land_config import LandConstraints, ConfigGenerationError
@@ -69,158 +69,6 @@ def customize_optimization(
 
 
 @dataclass
-class BestPathInterface:
-    num_of_bedrooms: int
-    demand_model: BaseLinearDemandModel
-    initial_config: ProjectConfig
-
-    def process_config(self, cfg: ProjectConfig, **kwargs) -> pd.DataFrame:
-        ...
-
-    def calculate_total_revenue(
-        self,
-        cfg,
-        psf_path,
-        full_output=False,
-        discount_rate=0.025,
-        **kwargs
-    ) -> Union[float, UnitSalesPath]:
-        ...
-
-    @staticmethod
-    def generate_path_segment(
-        path_length: Union[int, float] = 8,
-        price_range: Union[tuple, dict] = (1600, 1900),
-        *,
-        max_growth_psf=None,
-        max_growth_rate=0.02
-    ) -> tuple:
-        lower_bound = np.random.uniform(*price_range, size=1)
-
-        if max_growth_psf:
-            temp_max_psf = lower_bound + max_growth_psf
-
-        else:
-            temp_max_psf = lower_bound * (1 + max_growth_rate) ** path_length
-
-        upper_bound = min(
-            temp_max_psf,
-            max(*price_range)
-        )
-
-        return tuple(
-            np.sort(
-                np.random.uniform(lower_bound, upper_bound, size=path_length)
-            )
-        )
-
-    def get_projects_best_path(
-        self,
-        cfg,
-        *,
-        path_params: Union[PathGeneratorParams, Mapping[int, PathGeneratorParams]] = None,
-        path_length: Union[int, float] = 8,
-        price_range: Union[tuple, dict] = (1600, 1900),
-        max_growth_psf=None,
-        max_growth_rate=0.02,
-        discount_rate=0.025,
-        **kwargs
-    ):
-        if cfg is None:
-            cfg = self.initial_config
-
-        if path_params is None:
-
-            lower_bound = price_range[0]
-            length = path_length
-
-            def path_generator(current_path, temperature):
-
-                return self.generate_path_segment(
-                    path_length=path_length,
-                    price_range=price_range,
-                    max_growth_psf=max_growth_psf,
-                    max_growth_rate=max_growth_rate
-                )
-        else:
-
-            if isinstance(path_params, PathGeneratorParams):
-
-                lower_bound = path_params.price_range[0]
-                length = path_params.path_length
-
-                def path_generator(current_path, temperature):
-                    return self.generate_path_segment(
-                        **path_params
-                    )
-            else:
-
-                lower_bound = path_params[1].price_range[0]
-                length = path_params[1].path_length
-
-                def path_generator(current_path, temperature):
-
-                    path = ()
-                    for temp_params in path_params.values():
-
-                        params_dict = temp_params.__dict__
-
-                        if len(path) != 0:
-
-                            lower_bound = path[-1]
-
-                            original_price_range = params_dict['price_range']
-
-                            if (temp_params.max_growth_psf is None) or (temp_params.max_growth_psf != (None,)):
-                                upper_bound = min(
-                                    lower_bound + temp_params.max_growth_psf,
-                                    original_price_range[-1]
-                                )
-
-                            else:
-                                upper_bound = min(
-                                    lower_bound * (1 + temp_params.max_growth_rate) ** temp_params.path_length,
-                                    original_price_range[-1]
-                                )
-
-                            params_dict['price_range'] = (lower_bound, upper_bound)
-
-                        path += self.generate_path_segment(
-                            **params_dict
-                        )
-
-                    return path
-
-        upper_bound = lower_bound * (1 + 0.002) ** (length - 1)
-        initial_path = tuple(np.linspace(lower_bound, upper_bound, length))
-
-        def revenue_calculator(psf_path, full_output=False):
-
-            return self.calculate_total_revenue(
-                cfg=cfg,
-                psf_path=psf_path,
-                full_output=full_output,
-                discount_rate=discount_rate,
-                **kwargs
-            )
-
-        suggestion_path = customize_optimization(
-            # todo: change initial state
-            initial_state=initial_path,
-            state_generator=path_generator,
-            revenue_calculator=revenue_calculator
-        )
-
-        res = revenue_calculator(suggestion_path, full_output=True)
-
-        stock = cfg.get_units_count(self.num_of_bedrooms)
-        if sum(res.quantity_path) != stock:
-            print_in_green_bg(f'{self.num_of_bedrooms}-bed: fail to sell out.')
-
-        return res
-
-
-@dataclass
 class BaseBestPathModel:
 
     """
@@ -258,7 +106,7 @@ class BaseBestPathModel:
     demand_model: BaseLinearDemandModel
     initial_config: ProjectConfig
 
-    def process_config(self, cfg: ProjectConfig) -> pd.DataFrame:
+    def process_config(self, cfg: ProjectConfig, **kwargs) -> pd.DataFrame:
         launch_year_month = pd.to_datetime(f'{cfg.launching_year}-{cfg.launching_month:02d}-01')
         config_data = pd.DataFrame(
             {
@@ -275,6 +123,7 @@ class BaseBestPathModel:
                 'tenure': 1 if cfg.tenure == 'freehold' else 0,
                 'floor_area_sqm': cfg.avg_unit_size_per_bed(self.num_of_bedrooms),
                 'proj_max_floor': cfg.max_floor,
+                **kwargs
             }
         )
 
@@ -286,12 +135,12 @@ class BaseBestPathModel:
         ProjectConfig,
         time_index_to_multiply: float = 1
     ) -> float:
-        old_coef = comparable_demand_model.query_adjust_coef(
+        old_coef = query_adjust_coef(
             self.process_config(
                 self.initial_config
             )
         )
-        new_coef = comparable_demand_model.query_adjust_coef(
+        new_coef = query_adjust_coef(
             self.process_config(
                 new_cfg
             )
@@ -332,12 +181,24 @@ class BaseBestPathModel:
 
         for idx, p in enumerate(psf_path):
             # todo: manual alert
-            t = min((1 + idx * 3) + starting_period, 4)
+            if cfg.project_name == 'The Arden':
+                t = min((1 + idx * 3) + starting_period, 4)
+                if t != 1:
+                    time_index_to_multiply = 1
+
+            else:
+                t = (1 + idx * 3)
+
+            if isinstance(time_index_to_multiply, np.ndarray):
+                t_coef = time_index_to_multiply[idx]
+            else:
+                t_coef = time_index_to_multiply
+
             remaining_units = int(stock - valid_quantity_path.sum())
 
             coef_to_multiply = self.get_update_coef(
                 new_cfg=cfg,
-                time_index_to_multiply=time_index_to_multiply if t == 1 else 1
+                time_index_to_multiply=t_coef if t == 1 else 1
             )
 
             data = data_row.copy()
@@ -402,7 +263,6 @@ class BaseBestPathModel:
             local_path_length = int(np.ceil(path_length))
             last_period_discount = path_length - np.floor(path_length)
         else:
-            local_path_length = path_length
             last_period_discount = None
 
         def path_generator(current_path, temperature):
@@ -586,6 +446,9 @@ class BestPathsModels:
 
         return ProjectSalesPaths(suggestion_paths)
 
+    def calculate_paths_total_revenue(self):
+        ...
+
 
 @dataclass
 class BestLandModel:
@@ -601,20 +464,17 @@ class BestLandModel:
     land_constraints: LandConstraints
     demand_models: Mapping[int, BaseLinearDemandModel]
     initial_config: ProjectConfig
-    transformed_models: Optional[Mapping[int, BestPathInterface]] = None
+    transformed_models: Optional[dict]
 
     def __post_init__(self):
-
-        if self.transformed_models is None:
-
-            self.transformed_models = {
-                i: BaseBestPathModel(
-                    num_of_bedrooms=i,
-                    demand_model=self.demand_models[i],
-                    initial_config=self.initial_config
-                )
-                for i in self.demand_models.keys()
-            }
+        self.transformed_models = {
+            i: BaseBestPathModel(
+                num_of_bedrooms=i,
+                demand_model=self.demand_models[i],
+                initial_config=self.initial_config
+            )
+            for i in self.demand_models.keys()
+        }
 
     def get_random_project_config(self, project_config_params) -> ProjectConfig:
 
@@ -641,7 +501,7 @@ class BestLandModel:
 
                 return ProjectConfig(**pc_dict)
 
-            except:
+            except ConfigGenerationError:
 
                 continue
 
@@ -652,8 +512,8 @@ class BestLandModel:
         project_config_params,
         price_ranges,
         max_periods: Union[dict, int],
-        time_index_to_multiply=1,
-        output_num: int = 5
+        time_index_to_multiply,
+        output_num: int
     ) -> List[ConfigRevenue]:
 
         """
@@ -687,32 +547,24 @@ class BestLandModel:
             return random_cfg
 
         def revenue_calculator(cfg, detailed_output=False):
-
-            selling_paths = {}
-            for b in np.arange(1, 6):
-                if cfg.get_units_count(b) == 0:
-                    continue
-
-                length = max_periods[b] if isinstance(max_periods, dict) else max_periods
-                lower_bound = price_ranges[b][0]
-                upper_bound = lower_bound * (1 + 0.002) ** (length - 1)
-                psf_path = np.linspace(lower_bound, upper_bound, length)
-
-                selling_paths[b] = self.transformed_models[b].calculate_total_revenue(
-                    cfg=cfg,
-                    psf_path=psf_path,
-                    full_output=True,
-                    time_index_to_multiply=time_index_to_multiply[b]
-                    if isinstance(time_index_to_multiply, dict)
-                    else time_index_to_multiply
-                )
-
-                # psf_path = (price_ranges[b][0],) * (
-                #     max_periods[b]
-                #     if isinstance(max_periods, dict) else max_periods
-                # )
-
-            selling_paths = ProjectSalesPaths(selling_paths)
+            selling_paths = ProjectSalesPaths(
+                {
+                    b: self.transformed_models[b].calculate_total_revenue(
+                        cfg=cfg,
+                        psf_path=(price_ranges[b][0],) * (
+                            max_periods[b]
+                            if isinstance(max_periods, dict) else max_periods
+                        ),
+                        full_output=True,
+                        time_index_to_multiply=(
+                            time_index_to_multiply[b]
+                            if isinstance(time_index_to_multiply, dict)
+                            else time_index_to_multiply
+                        )
+                    )
+                    for b in np.arange(1, 6) if cfg.get_units_count(b) != 0
+                }
+            )
 
             discounted_tr = selling_paths.discounted_revenue
 
@@ -816,5 +668,3 @@ class BestLandModel:
             table_dir +
             f'best_land_use_{self.initial_config.project_name.replace(" ", "_")}_{tr_mill: .2f}m.csv'
         )
-
-        return tr_mill
