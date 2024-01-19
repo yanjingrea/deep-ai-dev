@@ -37,7 +37,7 @@ for idx in np.arange(len(manual_data)):
     project_name = adjusted_project_data.project_name.iloc[0]
     num_of_bedroom = adjusted_project_data.num_of_bedrooms.iloc[0]
 
-    if project_name == 'the-arcady-at-boon-keng':
+    if project_name == 'The Arcady at Boon Keng':
         if num_of_bedroom in [3, 4]:
             include_ids = [
                 # '9a9ccc9291a11467ffe12dd8607950ee',

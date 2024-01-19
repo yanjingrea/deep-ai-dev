@@ -5,13 +5,13 @@ import numpy as np
 import pandas as pd
 
 from constants.utils import print_in_green_bg
-from demand_curve_sep.cls_linear_demand_model import BaseLinearDemandModel
+from demand_model_utils.cls_linear_demand_model import BaseLinearDemandModel
 from demand_curve_sep.scr_common_training import comparable_demand_model
 from optimization.cls_base_simulation_results import (
     UnitSalesPath, ProjectSalesPaths, ConfigRevenue, PathGeneratorParams
 )
 from optimization.project_config import ProjectConfig
-from src.main.land_config import LandConstraints, ConfigGenerationError
+from src.main.land_config import LandConstraints
 from src.utils.simulated_annealing import EvaluationPredicate, annealing
 
 

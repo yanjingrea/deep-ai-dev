@@ -6,7 +6,7 @@ import pandas as pd
 
 from constants.utils import print_in_green_bg
 from demand_curve_hybrid.scr_coef import query_adjust_coef
-from demand_curve_sep.cls_linear_demand_model import BaseLinearDemandModel
+from demand_model_utils.cls_linear_demand_model import BaseLinearDemandModel
 from optimization.cls_base_simulation_results import (
     UnitSalesPath, ProjectSalesPaths, ConfigRevenue
 )

@@ -1,13 +1,13 @@
 import warnings
 
 from dataclasses import dataclass
-from typing import Optional, Union, Literal
+from typing import Optional
 
 import numpy as np
 import pandas as pd
 
 from demand_curve_hybrid.scr_coef import query_adjust_coef
-from demand_curve_sep.cls_linear_demand_model import BaseLinearDemandModel
+from demand_model_utils.cls_linear_demand_model import BaseLinearDemandModel
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 

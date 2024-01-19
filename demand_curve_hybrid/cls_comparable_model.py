@@ -1,8 +1,7 @@
-import pickle
 import warnings
 
 from dataclasses import dataclass
-from typing import Optional, Union, Literal
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -10,8 +9,8 @@ import pandas as pd
 from constants.redshift import query_data
 from demand_curve_hybrid.scr_coef import query_adjust_coef
 
-from demand_curve_sep.cls_linear_demand_model import BaseLinearDemandModel
-from demand_curve_sep.scr_neighborhood_clusters import clustering_res
+from demand_model_utils.cls_linear_demand_model import BaseLinearDemandModel
+from demand_model_utils.scr_neighborhood_clusters import clustering_res
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 

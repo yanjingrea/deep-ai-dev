@@ -8,7 +8,7 @@ import seaborn as sns
 
 # from demand_curve_hybrid.weekly_report.scr_test import *
 from demand_curve_hybrid.weekly_report.func_LaTex_code import *
-from demand_curve_hybrid.weekly_report.func_helper_function import dev_res_dir, report_dir
+from demand_curve_hybrid.weekly_report.scr_get_paths import dev_res_dir, report_dir
 
 test_results_des = dev_res_dir + 'test_results.plk'
 test_results = pickle.load(open(test_results_des, 'rb'))

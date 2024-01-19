@@ -7,7 +7,7 @@ import pandas as pd
 from constants.redshift import query_data
 from demand_curve_hybrid.scr_coef import query_adjust_coef
 from demand_curve_live.jadescape.scr_get_model import linear_models as models, training_data_class
-from demand_curve_sep.cls_linear_demand_model import BaseLinearDemandModel
+from demand_model_utils.cls_linear_demand_model import BaseLinearDemandModel
 from optimization.cls_base_simulation_results import UnitSalesPath, ProjectSalesPaths, PathGeneratorParams
 from optimization.cls_revenue_optimization import BestPathInterface
 

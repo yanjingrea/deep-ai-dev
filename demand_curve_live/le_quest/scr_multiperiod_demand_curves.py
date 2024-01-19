@@ -10,6 +10,7 @@ from demand_curve_hybrid.cls_plt_demand_curve import PltDemandCurve
 from demand_curve_live.le_quest.cls_data import BaseCMData
 from demand_curve_live.le_quest.cls_model import *
 from demand_curve_live.le_quest.scr_get_paths import model_dir, figure_dir
+from optimization.project_config import ProjectConfig
 
 training_data_class = BaseCMData()
 training_data = training_data_class.data.sort_values(
@@ -48,6 +49,22 @@ price = comparable_demand_model.price
 quantity = comparable_demand_model.quantity
 
 project_name = 'Le Quest'
+
+initial_config = ProjectConfig(
+    project_name='Le Quest',
+    launching_year=2017,
+    launching_month=8,
+    tenure='leasehold',
+
+    total_unit_count=(132, 144, 192, 48, 0),
+    avg_unit_size=(45.02, 63.20, 88.52, 115.04, 0),
+    max_floor=16,
+    num_of_stacks=43,
+
+    completion_year=2020,
+    is_top10_developer=1
+)
+
 today = datetime.today().date()
 models_path = model_dir + f'{project_name} {today}'.replace(' ', '_')
 
@@ -73,6 +90,12 @@ for num_of_bedroom in np.arange(1, 5):
         (training_data['project_name'] == project_name) &
         (training_data['num_of_bedrooms'] == num_of_bedroom)
         ].reset_index()
+    rebased_projects_data['proj_num_of_units'] = 516
+
+    if num_of_bedroom == 1:
+        rebased_projects_data['num_of_units'] = rebased_projects_data['num_of_units'] - 1
+        rebased_projects_data['num_of_remaining_units'] = rebased_projects_data['num_of_remaining_units'] - 1
+        rebased_projects_data['floor_area_sqm'] = 45.02
 
     coef_to_multiply = query_adjust_coef(rebased_projects_data)
     rebased_projects_data[price] = rebased_projects_data[price] * coef_to_multiply
@@ -99,12 +122,6 @@ for num_of_bedroom in np.arange(1, 5):
                     f"to {normalize_date(row['transaction_month_end'])}",
         axis=1
     )
-    rebased_projects_data['proj_num_of_units'] = 516
-
-    if num_of_bedroom == 1:
-        rebased_projects_data['num_of_units'] = rebased_projects_data['num_of_units'] - 1
-        rebased_projects_data['num_of_remaining_units'] = rebased_projects_data['num_of_remaining_units'] - 1
-
 
     price_range = (
         rebased_projects_data[price].min() * 0.8,

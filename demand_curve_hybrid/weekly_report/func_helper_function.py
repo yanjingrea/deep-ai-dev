@@ -1,47 +1,17 @@
-import os
-from dataclasses import dataclass
-from datetime import datetime
-from os.path import dirname, realpath
-from typing import Literal, Optional
-
-import numpy as np
-import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 
 from constants.utils import NatureD, NatureL
 from demand_curve_hybrid.scr_common_training import *
 from demand_curve_hybrid.cls_cm_data import query_adjust_coef
-# -------------------------------------------------
-
-td = datetime.today()
-
-dev_dir = dirname(realpath(__file__)) + f'/output/dev/{td.date()}/'
-dev_figure_dir = dev_dir + f'figures/'
-dev_data_dir = dev_dir + f'data/'
-dev_res_dir = dev_dir + f'res/'
-
-report_dir = f'/Users/wuyanjing/PycharmProjects/presentation/src/images/{td.date()}/'
-
-for mode, directory_path in zip(
-        ['dev_figures', 'dev_table', 'report', 'dev_results'],
-        [dev_figure_dir, dev_data_dir, report_dir, dev_res_dir]
-):
-    if not os.path.exists(directory_path):
-        try:
-            os.makedirs(directory_path)
-            print(f"{mode} directory created: {directory_path}")
-        except OSError as error:
-            print(f"Error creating {mode} directory: {error}")
-    else:
-        print(f"locate {mode} directory: {directory_path}")
+from demand_curve_hybrid.weekly_report.scr_get_paths import dev_data_dir, td, dev_figure_dir, report_dir
 
 
 # -------------------------------------------------
 @dataclass
 class PathsCollections:
     project_name: str
-    num_of_bedrooms: Optional[int]
+    num_of_bedrooms: Optional[Union[int, str]]
     paths: str
 
 
@@ -133,6 +103,26 @@ def get_report_results(
     adjusted_training_data.to_csv(
         dev_data_dir + f'{project_name} {int(num_of_bedroom)}-bedroom.csv'
     )
+
+    image_paths = model_to_demand_curve(
+        linear_model,
+        adjusted_project_data,
+        adjusted_training_data,
+        image_paths
+    )
+
+    return test_results, image_paths
+
+
+def model_to_demand_curve(
+    linear_model,
+    adjusted_project_data,
+    adjusted_training_data,
+    image_paths
+):
+
+    project_name = adjusted_project_data['project_name'].iloc[0]
+    num_of_bedroom = adjusted_project_data['num_of_bedrooms'].iloc[0]
 
     last_date = adjusted_project_data['transaction_month_end'].iloc[-1]
 
@@ -238,13 +228,13 @@ def get_report_results(
         plt.legend()
         if mode == 'dev':
             manual_label = ''
-            title = f'{project_name} {normalize_bed_num(num_of_bedroom)+ "-bedroom"}'
+            title = f'{project_name} {normalize_bed_num(num_of_bedroom) + "-bedroom"}'
             ax.set_title(f'{title}\n{manual_label}')
             plt.savefig(dev_figure_dir + f'dev-{title}{manual_label}.png', dpi=300)
             plt.close()
 
         else:
-            title = f'{project_name} {normalize_bed_num(num_of_bedroom)+ "-bedroom"}'
+            title = f'{project_name} {normalize_bed_num(num_of_bedroom) + "-bedroom"}'
             ax.set_title(f'{title}')
             report_path = title.replace('-', '_').replace(' ', '_')
             plt.savefig(report_dir + f"{report_path}.png", dpi=300)
@@ -263,4 +253,4 @@ def get_report_results(
     for mode in ['dev', 'report']:
         plot_first_last_curve(mode, image_paths)
 
-    return test_results, image_paths
+    return image_paths

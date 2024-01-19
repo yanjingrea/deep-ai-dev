@@ -1,18 +1,15 @@
 import numpy as np
 import pandas as pd
 
-from demand_curve_sep.cls_linear_demand_model import BaseLinearDemandModel
+from demand_model_utils.cls_linear_demand_model import BaseLinearDemandModel
 from demand_curve_sep.cls_plt_demand_curve import PltDemandCurve
 from demand_curve_sep.scr_common_training import (
     price,
-    quantity,
     get_adjusted_project_data,
     comparable_demand_model,
     get_rebased_project_data
 )
-from optimization.cls_revenue_optimization import BestLandModel
 from optimization.project_config import ProjectConfig
-from src.main.building_config import TBuildingConfig
 from src.main.land_config import LandConstraints, TLandLot, ConfigGenerationError
 
 """
