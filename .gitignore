@@ -2,5 +2,5 @@
 .venv
 local
 output
-demand_curve_sep
 demand_curve_agg
+demand_curve_sep

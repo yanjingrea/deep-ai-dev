@@ -1,13 +1,14 @@
 from dataclasses import dataclass
 
 import numpy as np
+import pandas as pd
 import geopandas as gpd
 from shapely import wkt
 import plotly.express as px
 import plotly.graph_objects as go
 
 from constants.redshift import query_data
-from demand_model_utils.scr_neighborhood_clusters import *
+from demand_curve_sep.scr_neighborhood_clusters import *
 from demand_curve_sep.scr_common_training import *
 
 base_data = query_data(
