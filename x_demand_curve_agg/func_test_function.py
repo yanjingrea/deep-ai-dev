@@ -8,7 +8,7 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 
 from constants.utils import NatureD, NatureL
-from demand_curve_agg.scr_training import *
+from x_demand_curve_agg.scr_training import *
 
 # -------------------------------------------------
 

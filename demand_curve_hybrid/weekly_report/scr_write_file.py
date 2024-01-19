@@ -45,14 +45,73 @@ with open(f"{latex_dir}{file_name}", "w") as file:
         \begin{frame}[t]{Overview} 
             \tableofcontents
         \end{frame}
-
-        \makesection{Prediction Error}
+        
+        \makesection{Units Ranking U Curve}
+        \begin{frame}{Units Ranking U Curve}
+            \begin{columns}
+                \begin{column}{0.45\textwidth}
+                    \colheader{Abstract}
+                    \begin{enumerate}
+                        \footnotesize
+                        \item \textbf{Goal:} Accurately predict the sales sequence within projects, identifying which unit will sell first.
+                        \item \textbf{Visualization Explanation:}
+                        Scatter Plot: Each dot illustrates the prediction accuracy for distinct projects.
+                        Blue Curve: Demonstrates the accuracy outcomes for a random selection strategy.
+                        \item \textbf{Current State:} The majority of prediction dots are positioned above the random selection curve, indicating a 6\% enhanced accuracy over random selection.
+                    \end{enumerate}
+                \end{column}
+    
+                \begin{column}{0.45\textwidth}
+                    \colheader{Results}
+                    {
+                        \begin{center}
+                            \includegraphics[width=1\textwidth]{images/project_level_u_curve}
+                        \end{center}
+                    }
+                \end{column}
+    
+    
+            \end{columns}
+        \end{frame}
+        
+        \makesection{Demand Curve}
+        
+        \subsection{Introduction}
+        
+        \begin{frame}{Methodology}
+            \begin{columns}
+                \footnotesize
+                \begin{column}{0.45\textwidth}
+                    \colheader{What's Demand Curve?}
+                    \begin{enumerate}
+                        \item A demand curve is a graphical representation that illustrates the relationship between the price and the quantity demanded by consumers at that price.
+                        \item Typically, it slopes downwards from left to right, indicating that as the price of a product decreases, the demand for it generally increases, and vice versa.
+                    \end{enumerate}
+                \end{column}
+    
+                \begin{column}{0.45\textwidth}
+                    \colheader{What's the Factors Incorporated in Our Model?}
+                    {
+                        \begin{enumerate}
+                            \item \textbf{Project’s Features:} Project size, unit mix, location and so on
+                            \item \textbf{Comparable Projects:} Performance and characteristics of nearby and comparable condos
+                            \item \textbf{Neighbourhood/Region Characteristics:} market dynamics
+                            \item \textbf{National Housing Industry Trends:} housing price index and new condo supply
+                        \end{enumerate}
+                    }
+                \end{column}
+    
+    
+            \end{columns}
+        \end{frame}
+        
+        \subsection{Demand Prediction Error}
         %----------------------------------------------------------------------------------------
         % Prediction Error
         %----------------------------------------------------------------------------------------
         """ + error_codes + r"""
 
-        \makesection{Demand Curve}
+        \subsection{Demand Curve Image}
         %----------------------------------------------------------------------------------------
         % Demand Curve
         %----------------------------------------------------------------------------------------

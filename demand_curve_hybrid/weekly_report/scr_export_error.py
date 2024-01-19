@@ -32,7 +32,7 @@ for idx, col in enumerate(error_cols):
     distribution_cols[f'column{idx + 1}'] = create_column(
         col.replace('_', ' '),
         report_path,
-        width=0.8
+        width=1
     )
 
 formula = r"""
@@ -59,7 +59,7 @@ for idx, col in enumerate(error_cols):
     distribution_summary_cols[f'column{idx + 1}'] = create_column(
         col.replace('_', ' '),
         report_path,
-        width=0.8
+        width=1
     )
 
 error_codes = f"""
@@ -101,7 +101,7 @@ projects_error = projects_error.rename(columns=rename_dict)
 projects_error['page'] = projects_error.index // 10 + 1
 
 # error summary
-error_codes += r"""\subsection{Summary}"""
+error_codes += r"""\subsection{Error Summary}"""
 caption = r'\caption' + '{Error Metrics in percentage}'
 for sum_table, page_name in zip(
         [agg_table, sep_table],
@@ -128,12 +128,14 @@ for sum_table, page_name, data_path in zip(
 
     his_slide_cols = {}
 
+    paths_dict = save_historical_data(sum_table, data_path)
+
     for idx, error_type in enumerate(['error to sales', 'error to stock']):
 
         his_slide_cols[f'column{idx + 1}'] = create_column(
             error_type.replace('_', ' '),
-            plot_historical_data(sum_table, data_path),
-            width=0.8
+            paths_dict[error_type],
+            width=1
         )
 
     error_codes += f"""

@@ -1,6 +1,6 @@
 import streamlit as st
 from demand_curve_sep.streamlit_app.func_core_function import *
-from demand_curve_on_map.func_helper import *
+from x_demand_curve_on_map.func_helper import *
 
 st.set_page_config(
     page_title="New Launch Condo Demand Curve Lab",

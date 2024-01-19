@@ -1,3 +1,5 @@
+import pickle
+
 import numpy as np
 import pandas as pd
 
@@ -96,7 +98,8 @@ for idx in np.arange(len(manual_data)):
         linear_model,
         adjusted_project_data,
         adjusted_training_data,
-        image_paths
+        image_paths,
+        concat=False
     )
 
 # back test data

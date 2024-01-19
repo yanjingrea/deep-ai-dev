@@ -144,13 +144,13 @@ def plot_correct_rate(
     return title.replace(" ", "_")
 
 
-def plot_historical_data(
+def save_historical_data(
     sum_table,
     data_path
 ):
 
     his_path = (
-        f'/Users/wuyanjing/PycharmProjects/app/demand_curve_sep'
+        f'/Users/wuyanjing/PycharmProjects/app/demand_curve_hybrid'
         f'/weekly_report/output/{data_path}_historical_error.csv'
     )
     his_data = pd.read_csv(his_path, header=0)
@@ -174,6 +174,9 @@ def plot_historical_data(
         his_data.to_csv(his_path, index=False)
 
     x = his_data['report date']
+
+    his_slide_cols = {}
+
     for idx, error_type in enumerate(['error to sales', 'error to stock']):
 
         fig, ax = plt.subplots(figsize=(8, 6))
@@ -181,7 +184,7 @@ def plot_historical_data(
         for pct, l, color in zip(
                 ['', ' 50th'],
                 ['mean', 'median'],
-                COLOR_SCALE[:1]
+                COLOR_SCALE[:2]
         ):
 
             col = error_type + pct
@@ -209,4 +212,6 @@ def plot_historical_data(
         plt.legend()
         plt.savefig(report_dir + report_path, dpi=300)
 
-        return report_path
+        his_slide_cols[error_type] = report_path
+
+    return his_slide_cols

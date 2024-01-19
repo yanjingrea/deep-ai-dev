@@ -1,3 +1,5 @@
+from typing import Literal
+
 import seaborn as sns
 from matplotlib import pyplot as plt
 
@@ -118,7 +120,8 @@ def model_to_demand_curve(
     linear_model,
     adjusted_project_data,
     adjusted_training_data,
-    image_paths
+    image_paths,
+    concat=True
 ):
 
     project_name = adjusted_project_data['project_name'].iloc[0]
@@ -126,15 +129,17 @@ def model_to_demand_curve(
 
     last_date = adjusted_project_data['transaction_month_end'].iloc[-1]
 
-    if last_date > pd.to_datetime(td.replace(day=1)):
+    if concat:
 
-        adjusted_project_data = pd.concat(
-            [
-                adjusted_project_data,
-                bedroom_data.prepare_forecast_demand_curve_data(adjusted_project_data)
-            ],
-            ignore_index=True
-        )
+        if last_date > pd.to_datetime(td.replace(day=1)):
+
+            adjusted_project_data = pd.concat(
+                [
+                    adjusted_project_data,
+                    bedroom_data.prepare_forecast_demand_curve_data(adjusted_project_data)
+                ],
+                ignore_index=True
+            )
 
     def normalize_date(date):
         return str(date.year) + ' ' + date.month_name()[:3]
