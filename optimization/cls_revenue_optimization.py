@@ -11,8 +11,8 @@ from optimization.cls_base_simulation_results import (
     UnitSalesPath, ProjectSalesPaths, ConfigRevenue, PathGeneratorParams
 )
 from optimization.project_config import ProjectConfig
-from src.main.land_config import LandConstraints
-from src.utils.simulated_annealing import EvaluationPredicate, annealing
+from optimization.src.main.land_config import LandConstraints
+from optimization.src.utils.simulated_annealing import EvaluationPredicate, annealing
 
 
 def customize_optimization(

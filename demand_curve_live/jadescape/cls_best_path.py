@@ -2,13 +2,12 @@ import numpy as np
 from demand_curve_live.jadescape.func_helper import (
     models,
     calculate_actual_revenue,
-    LocalBestPath,
     LocalBestPaths
 )
 from demand_curve_live.jadescape.scr_get_paths import table_dir
 from optimization.cls_base_simulation_results import ProjectSalesPaths, PathGeneratorParams
 from optimization.project_config import ProjectConfig
-from src.utils.cm_timer import cm_timer
+from optimization.src.utils.cm_timer import cm_timer
 
 if False:
     initial_config = ProjectConfig(

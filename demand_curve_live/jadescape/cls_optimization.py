@@ -5,14 +5,14 @@ import numpy as np
 import pandas as pd
 
 from constants.utils import print_in_green_bg
-from demand_curve_hybrid.scr_coef import query_adjust_coef
+from demand_model_utils.scr_coef import query_adjust_coef
 from demand_model_utils.cls_linear_demand_model import BaseLinearDemandModel
 from optimization.cls_base_simulation_results import (
     UnitSalesPath, ProjectSalesPaths, ConfigRevenue
 )
 from optimization.project_config import ProjectConfig
-from src.main.land_config import LandConstraints, ConfigGenerationError
-from src.utils.simulated_annealing import EvaluationPredicate, annealing
+from optimization.src.main.land_config import LandConstraints, ConfigGenerationError
+from optimization.src.utils.simulated_annealing import EvaluationPredicate, annealing
 
 
 def customize_optimization(

@@ -1,7 +1,8 @@
 import pandas as pd
-from rea_python.constants import OutputFormat, DBCopyMode
+
 from rea_python.main.database import RedshiftHook
 from rea_python.main.aws import get_secret
+from rea_python.constants import OutputFormat, DBCopyMode
 
 hook = RedshiftHook(
     iam_role_arn="arn:aws:iam::051694948699:role/prod-redshift-aws-access",
@@ -9,7 +10,6 @@ hook = RedshiftHook(
     via_s3_folder="redshift-copy",
 )
 hook.set_conn_from_uri(get_secret("prod/redshift/pipeline/db_conn_uri"))
-
 
 def query_data(
         query

@@ -10,7 +10,7 @@ from demand_curve_sep.scr_common_training import (
     get_rebased_project_data
 )
 from optimization.project_config import ProjectConfig
-from src.main.land_config import LandConstraints, TLandLot, ConfigGenerationError
+from optimization.src.main.land_config import LandConstraints, TLandLot, ConfigGenerationError
 
 """
 Shift Curve Validation Test

@@ -1,12 +1,12 @@
 import pickle
 
 from dataclasses import dataclass
-from typing import Optional, Union, Literal
+from typing import Optional, Literal
 
 import numpy as np
 import pandas as pd
 
-from demand_curve_hybrid.scr_coef import query_adjust_coef
+from demand_model_utils.scr_coef import query_adjust_coef
 from demand_curve_live.jadescape.scr_get_paths import model_dir
 
 ALL_BEDS = ['one', 'two', 'three', 'four', 'five']

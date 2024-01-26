@@ -3,5 +3,5 @@
 local
 output
 x_demand_curve_agg
-demand_curve_sep
+x_demand_curve_sep
 catboost_info

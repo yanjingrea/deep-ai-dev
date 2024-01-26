@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from src.main.building_config import TBuildingConfig
+from optimization.src.main.building_config import TBuildingConfig
 
 
 @dataclass(frozen=True)

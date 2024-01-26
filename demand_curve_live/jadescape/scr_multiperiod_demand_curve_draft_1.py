@@ -1,9 +1,8 @@
-import pandas as pd
 from matplotlib import pyplot as plt
 import seaborn as sns
 
 from constants.utils import NatureD, NatureL
-from demand_curve_hybrid.cls_plt_demand_curve import PltDemandCurve
+from demand_model_utils.cls_plt_demand_curve import PltDemandCurve
 from demand_curve_live.jadescape.cls_data import BaseCMData
 from demand_curve_live.jadescape.cls_model import *
 from demand_curve_live.jadescape.scr_get_paths import model_dir, figure_dir

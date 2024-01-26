@@ -6,7 +6,7 @@ obtaining the best selling path and optimizing land use configurations.
 from demand_curve_live.the_arden.scr_get_paths import figure_dir, table_dir
 from optimization.cls_revenue_optimization import BestPathsModels
 from optimization.project_config import ProjectConfig
-from src.main.land_config import LandConstraints
+from optimization.src.main.land_config import LandConstraints
 from demand_curve_live.the_arden.scr_get_model import linear_models as models
 
 # land_constraints = LandConstraints.from_location(TLandLot('MK10-01653L'))

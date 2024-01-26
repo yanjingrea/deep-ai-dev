@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 from constants.redshift import query_data
-from demand_curve_hybrid.scr_coef import query_adjust_coef
+from demand_model_utils.scr_coef import query_adjust_coef
 from demand_curve_live.le_quest.scr_get_model import linear_models as models, training_data_class
 from demand_model_utils.cls_linear_demand_model import BaseLinearDemandModel
 from optimization.cls_base_simulation_results import UnitSalesPath, ProjectSalesPaths, PathGeneratorParams

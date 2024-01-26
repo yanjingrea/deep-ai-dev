@@ -6,10 +6,9 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 
 from constants.utils import NatureD, NatureL
-from demand_curve_hybrid.cls_plt_demand_curve import PltDemandCurve
-from demand_curve_hybrid.scr_coef import query_adjust_coef
+from demand_model_utils.cls_plt_demand_curve import PltDemandCurve
+from demand_model_utils.scr_coef import query_adjust_coef
 
-from demand_curve_live.jadescape.scr_get_paths import model_dir, figure_dir
 from demand_curve_live.jadescape.scr_get_model import linear_models, training_data_class
 
 training_data = training_data_class.data.sort_values(
