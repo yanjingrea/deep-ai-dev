@@ -1,12 +1,12 @@
 import pickle
-from dataclasses import dataclass
-from typing import Literal, Optional, Union
+from typing import Literal
 
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 
+from DeepAI_weekly_report.test.cls_paths_collections import PathsCollections
 from constants.utils import NatureD, NatureL
 from demand_curve_main.cls_comparable_data import BaseCMData
 from demand_curve_main.cls_comparable_model import ComparableDemandModel
@@ -18,11 +18,6 @@ from DeepAI_weekly_report.scr_get_paths import (
 
 
 # -------------------------------------------------
-@dataclass
-class PathsCollections:
-    project_name: Optional[str]
-    num_of_bedrooms: Optional[Union[int, str]]
-    paths: Optional[str]
 
 
 def get_rebased_project_data(
@@ -310,11 +305,18 @@ def weekly_test_demand_model(
 
     # forecast data
     # --------------------------------------------------------------------------------------------
+
+    manual_input_curves = pd.DataFrame(image_paths)
+    manual_input_projects = manual_input_curves['project_name'].unique()
+
     if forecast_data is not None:
         for idx in np.arange(len(forecast_data)):
             temp_row = forecast_data.iloc[[idx]].copy()
             temp_name = temp_row.project_name.iloc[0]
             temp_bed = temp_row.num_of_bedrooms.iloc[0]
+
+            if temp_name in manual_input_projects:
+                continue
 
             _, image_paths = get_single_project_report_results(
                 data_model=data_model,

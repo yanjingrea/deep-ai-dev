@@ -64,8 +64,8 @@ class BaseLinearDemandModel:
 
     def extract_2d_demand_curve(
             self,
-            project_data,
-            launching_period,
+            project_data: pd.DataFrame,
+            launching_period: int,
             price_range: tuple = None,
             fig_format: Literal['plotly', 'plt'] = 'plotly'
     ):

@@ -10,8 +10,9 @@ from demand_curve_main.scr_coef import query_adjust_coef
 from demand_curve_ec.scr_common_training import comparable_demand_model, bedroom_data
 from DeepAI_weekly_report.test.func_helper_function import (
     dev_figure_dir, report_dir,
-    PathsCollections, normalize_bed_num
+    normalize_bed_num
 )
+from DeepAI_weekly_report.test.cls_paths_collections import PathsCollections
 
 manual_data = pd.read_csv(
     '/Users/wuyanjing/PycharmProjects/app/demand_curve_ec/local/manual_input_ec.csv'

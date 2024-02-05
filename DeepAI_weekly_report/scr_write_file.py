@@ -1,6 +1,6 @@
 from DeepAI_weekly_report.scr_export_error import error_codes
 from DeepAI_weekly_report.scr_export_images import demand_images_codes
-from DeepAI_weekly_report.scr_export_u_curve import tower_images_codes
+# from DeepAI_weekly_report.scr_export_u_curve import tower_images_codes
 from DeepAI_weekly_report.scr_get_paths import td
 
 latex_dir = '/Users/wuyanjing/PycharmProjects/presentation/src/'
@@ -59,9 +59,10 @@ with open(f"{latex_dir}{file_name}", "w") as file:
                         \footnotesize
                         \item \textbf{Goal:} Accurately predict the sales sequence within projects, identifying which unit will sell first.
                         \item \textbf{Visualization Explanation:}
-                        Scatter Plot: Each dot illustrates the prediction accuracy for distinct projects.
-                        Blue Curve: Demonstrates the accuracy outcomes for a random selection strategy.
-                        \item \textbf{Current State:} The majority of prediction dots are positioned above the random selection curve, indicating a 6\% enhanced accuracy over random selection.
+                            \begin{enumerate}
+                                \item Scatter Plot: Each dot illustrates the prediction accuracy for distinct projects.
+                                \item Blue Curve: Demonstrates the accuracy outcomes for a random selection strategy.
+                            \end{enumerate}
                     \end{enumerate}
                 \end{column}
     
@@ -73,19 +74,11 @@ with open(f"{latex_dir}{file_name}", "w") as file:
                         \end{center}
                     }
                 \end{column}
-    
-    
             \end{columns}
         \end{frame}
-        
-        \subsection{Selling Sequence Image}
-        
-        """ + tower_images_codes + r"""
-        
-        \makesection{Demand Curve}
-        
+
+        \makesection{Demand Curve}        
         \subsection{Introduction}
-        
         \begin{frame}{Methodology}
             \begin{columns}
                 \footnotesize

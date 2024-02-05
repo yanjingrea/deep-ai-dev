@@ -75,7 +75,7 @@ with
                                             end as listing_price
                                     from base_trans_price
                                          full outer join base_listing_price
-                                                         using (dw_project_id, dw_property_id)
+                                                         using (dw_property_id)
                                     where project_launch_date >= '2015-01-01'
                                 ),
     base_final_avm_price as (
@@ -104,7 +104,6 @@ with
                                                                   dw_property_id,
                                                                   xgb_avg_pred_psf
                                                               from developer_tool.sg_condo_properties_estimate_launch_price
-
                                                           )
                                 select
                                     dw_property_id,
@@ -113,16 +112,16 @@ with
                                         else daily_avm_price_psf end as avm_price_psf,
                                     avm_price_psf * floor_area_sqft as avm_price,
                                     update_date
-                                from (
+                                from data_science.ui_master_sg_properties_view_filled_static_features_condo
+                                left join (
                                          select
                                              *
                                          from base_avm_price
                                          where seq = 1
                                      ) as avm_price
-                                     full outer join base_his_avm_price
-                                                     using (dw_property_id)
-                                     join data_science.ui_master_sg_properties_view_filled_static_features_condo
-                                          using (dw_property_id)
+                                    using (dw_property_id)
+                                left join base_his_avm_price
+                                    using (dw_property_id)
                                 order by 1, 2
                             ),
     geo_features as (
@@ -195,7 +194,7 @@ from data_science.ui_master_sg_properties_view_filled_static_features_condo
                    from ui_app.project_summary_prod_sg
                ) as c
                using (dw_project_id)
-     left join data_science.ui_master_sg_project_geo_view_filled_features_condo d
+     join (select * from  data_science.ui_master_sg_project_geo_view_filled_features_condo where project_launch_month::int > 201800) d
                using (dw_project_id)
      left join base_final_listing_price a
                using (dw_property_id)
@@ -203,4 +202,4 @@ from data_science.ui_master_sg_properties_view_filled_static_features_condo
                using (dw_property_id)
      left join geo_features
                using (dw_property_id)
-order by 1, 2, 3;
+order by 1, 2, address_stack, address_floor_num;

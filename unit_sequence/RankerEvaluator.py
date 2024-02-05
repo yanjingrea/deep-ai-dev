@@ -42,7 +42,7 @@ def plot_random_u_curve(fig=None, ax=None):
         alpha=0.5,
         color=COLOR_SCALE[2],
         lw=3,
-        label='random selection',
+        label='random selection accuracy',
         ax=ax
     )
 
@@ -219,6 +219,97 @@ class RankerEvaluator:
 
         return fig, ax
 
+    def plot_project_level_fitted_curve(
+        self,
+        *,
+        fig,
+        ax,
+        control_stock
+    ):
+
+        # fitted curve
+        # -----------------------------------------------------
+        score_table = self.projects_score_table[
+            self.projects_score_table['stock'] >= control_stock
+            ].copy()
+        score_table['percentage'] = score_table['quantity'] / score_table['stock']
+
+        random_table = RandomSelection().reference
+
+        x = 'percentage'
+        y = 'score'
+
+        from scipy.interpolate import UnivariateSpline
+
+        spl = UnivariateSpline(
+            score_table.sort_values(x)[x],
+            score_table.sort_values(x)[y],
+            k=2
+        )
+        new_y = spl(random_table['percentage'])
+        new_y = np.clip(new_y, 0, 1)
+
+        sns.lineplot(
+            x=random_table['percentage'],
+            y=new_y,
+            alpha=0.5,
+            color=COLOR_SCALE[0],
+            lw=3,
+            label='model prediction'
+        )
+        plt.fill_between(
+            x=random_table['percentage'],
+            y1=new_y,
+            y2=random_table['accuracy'],
+            color=COLOR_SCALE[2],
+            alpha=0.2,
+            label="model's gain"
+        )
+
+        random_gain_area = np.trapz(
+            y=random_table['accuracy'],
+            x=random_table['percentage'],
+            dx=0.01
+        )
+        model_gain_area = np.trapz(
+            y=new_y,
+            x=random_table['percentage'],
+            dx=0.01
+        )
+
+        model_net_gain = model_gain_area - random_gain_area
+
+        texts = []
+
+        px = random_table.iloc[25][x]
+
+        mask = random_table['percentage'] == px
+
+        random_y = random_table['accuracy'][mask].mean()
+        model_y = new_y[mask].mean()
+
+        py = random_y + (model_y - random_y) / 2
+
+        texts.append(
+            ax.text(
+                px,
+                py,
+                f"net gain: {model_net_gain * 100: .2f}% \n"
+                f"= {model_net_gain / (1 - random_gain_area) * 100: .2f}% of maximum gain",
+                fontsize=10
+            )
+        )
+
+        adjust_text(
+            texts,
+            arrowprops=dict(arrowstyle="-", lw=0.5),
+            ax=ax
+        )
+
+        ax.legend()
+
+        return fig, ax
+
     def plot_project_level_u_curve(self, control_stock=0):
 
         fig, ax = plt.subplots(figsize=(8, 6))
@@ -226,20 +317,6 @@ class RankerEvaluator:
         plot_random_u_curve(fig, ax)
 
         self.plot_scatter_above_u_curve(control_stock=control_stock, fig=fig, ax=ax)
-
-        # from scipy.interpolate import UnivariateSpline
-        # spl = UnivariateSpline(
-        #     score_table.sort_values(x)[x],
-        #     score_table.sort_values(x)[y],
-        #     k=2
-        # )
-        # new_y = spl(random_res['percentage'])
-        # sns.lineplot(
-        #     x=random_res['percentage'],
-        #     y=new_y,
-        #     alpha=0.5,
-        #     color=COLOR_SCALE[2]
-        # )
 
         return fig, ax
 

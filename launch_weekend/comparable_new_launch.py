@@ -29,13 +29,21 @@ data = query_data(
                           select
                               a.dw_project_id,
                               num_of_bedrooms,
+                              (
+                                  select non_landed_index
+                                  from developer_tool.sg_gov_residential_index
+                                  order by quarter_index desc
+                                  limit 1
+                              ) as current_index,
                               count(dw_property_id) as sales,
-                              avg(unit_price_psf) as average_launch_psf,
-                              avg(transaction_amount) as average_launch_price
+                              avg(unit_price_psf / c.non_landed_index * current_index) as average_launch_psf,
+                              avg(transaction_amount / c.non_landed_index * current_index) as average_launch_price
                           from base_launch_data a
                                left join data_science.ui_master_sg_transactions_view_filled_features_condo b
                                          on a.dw_project_id = b.dw_project_id
                                              and b.transaction_date::date <= dateadd(day, 7, launch_date::date)
+                               join developer_tool.sg_gov_residential_index c
+                                    on b.transaction_quarter_index = c.quarter_index
                           group by 1, 2
                       )
             ,
@@ -81,6 +89,7 @@ data = query_data(
       and p_base.num_of_units > 0
       and c_base.num_of_units > 0
       and p_base.num_of_bedrooms = c_base.num_of_bedrooms
+      and p_base.average_launch_psf / c_base.average_launch_psf - 1 <= 0.15
     order by 1, p.comparison_order
     """
 )
@@ -167,8 +176,8 @@ for num_bed in np.arange(1, 6):
             showlegend=True,
             hovermode='closest',
             margin=dict(b=20, l=5, r=5, t=40),
-            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
+            xaxis=dict(showgrid=True, zeroline=True, showticklabels=True),
+            yaxis=dict(showgrid=True, zeroline=True, showticklabels=True)
         )
     )
     fig.show()

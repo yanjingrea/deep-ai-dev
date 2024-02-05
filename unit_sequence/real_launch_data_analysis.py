@@ -5,7 +5,7 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 from sklearn.metrics import ConfusionMatrixDisplay
-from unit_ranking.CoreRanker import RandomSelection
+from unit_sequence.CoreRanker import RandomSelection
 from constants.database import Database, get_hook
 
 output_dir = dirname(realpath(__file__)) + f'/output/'
@@ -37,8 +37,8 @@ def query_data(
                                     using (dw_project_id)
                           where update_method = 'no_comparables_ml'
                             and property_group = 'condo'
-                            and to_date(update_date, 'YYYYMMDD') <= to_date(project_launch_month, 'YYYYMM')
-                           and project_name = lower('{project_name.replace(' ', '-')}')
+                            --and to_date(update_date, 'YYYYMMDD') <= to_date(project_launch_month, 'YYYYMM')
+                           and project_name = lower('{project_name.replace(" ", "-")}')
                       )
         select
             dw_property_id,
@@ -77,7 +77,7 @@ def query_data(
 
     merged_data = real_launch.merge(avm_price_data, how='right', on='dw_property_id')
     merged_data['listing_price_psf'] = merged_data['listing_price_psf'].astype(float)
-    merged_data['transaction_time'] = pd.to_datetime(merged_data['sold_on'])
+    # merged_data['transaction_time'] = pd.to_datetime(merged_data['sold_on'])
 
     merged_data = merged_data[merged_data['listing_price_psf'] != 0].copy()
     merged_data['price_diff'] = merged_data['avm_price_psf'] / merged_data['listing_price_psf'] - 1
@@ -136,7 +136,7 @@ def tower_view_comparison(project_trans):
         ax = plt.subplot(2, 3, idx + 1)
 
         floor = project_trans_sorted[floor_col].astype(int)
-        stack = project_trans_sorted[stack_col]
+        stack = project_trans_sorted[stack_col].astype(int)
 
         pivot_data = project_trans_sorted.pivot_table(
             index=floor,
@@ -150,7 +150,7 @@ def tower_view_comparison(project_trans):
 
         pivot_data[pivot_data == -100] = np.nan
 
-        fmt = '.2f' if len(stack.unique()) < 21 else '.1f'
+        fmt = '.2f' if len(stack.unique()) < 10 else '.1f'
         cmap = sns.color_palette("coolwarm", as_cmap=True).copy()
         cmap.set_bad(color="lightgrey")
         sns.heatmap(
@@ -182,8 +182,9 @@ def tower_view_comparison(project_trans):
 
 
 for project in [
-    'The Arcady At Boon Keng',
-    'Hillhaven'
+    # 'The Arcady At Boon Keng',
+    # 'Hillhaven',
+    'Lumina Grand'
 ]:
     merged_data = query_data(project)
 

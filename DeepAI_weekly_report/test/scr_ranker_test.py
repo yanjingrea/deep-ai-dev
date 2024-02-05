@@ -3,7 +3,7 @@ import pickle
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from DeepAI_weekly_report.test.func_helper_function import PathsCollections
+from DeepAI_weekly_report.test.cls_paths_collections import PathsCollections
 from unit_sequence.CatBoostAVMRanker import CatBoostAVMRanker
 from unit_sequence.RankerEvaluator import plot_random_u_curve, RankerEvaluator
 from DeepAI_weekly_report.scr_get_paths import (
@@ -54,6 +54,8 @@ for i in range(0, n_latest_projects, n_project_per_group):
         ], ignore_index=True
     )
 
+tested_data.to_csv(dev_data_dir + 'property_selling_sequence.csv', index=False)
+
 # U curve
 # ---------------------------------------------------------
 fig, ax = plot_random_u_curve()
@@ -72,13 +74,18 @@ fig, ax = evaluator.plot_scatter_above_u_curve(
     highlight_projects=highlight_projects
 )
 
+fig, ax = evaluator.plot_project_level_fitted_curve(
+    fig=fig,
+    ax=ax,
+    control_stock=min_stock
+)
+
 title = f'project level u curve'
 ax.set_title(title)
 
 report_path = title.replace('-', '_').replace(' ', '_')
 plt.savefig(dev_figure_dir + f'{report_path}.png', dpi=300)
 plt.savefig(report_dir + f'{report_path}.png', dpi=300)
-
 
 projects_score_table = evaluator.projects_score_table
 mid_big_projects = projects_score_table[projects_score_table['stock'] > min_stock]
@@ -91,35 +98,35 @@ projects_score_table.to_csv(
     dev_data_dir + f'u_curve_projects_score_table.csv', index=False
 )
 
-# Tower View
-for proj in highlight_projects:
+if False:
+    # Tower View
+    for proj in highlight_projects:
 
-    project_data = tested_data[tested_data['project_name'] == proj].copy()
-    available_beds = project_data['num_of_bedrooms'].unique()
+        project_data = tested_data[tested_data['project_name'] == proj].copy()
+        available_beds = project_data['num_of_bedrooms'].unique()
 
-    for bed in available_beds:
-        bed_data = project_data[project_data['num_of_bedrooms'] == bed]
+        for bed in available_beds:
+            bed_data = project_data[project_data['num_of_bedrooms'] == bed]
 
-        fig, ax = ranker_model.plot_tower_view(
-            project_data=bed_data,
-            values=ranker_model.pred_ranking
-        )
-
-        title = f'Selling Sequence {proj} {bed}-bedroom'
-        ax.set_title(title)
-
-        report_path = title.replace('-', '_').replace(' ', '_')
-        plt.savefig(dev_figure_dir + report_path + '.png', dpi=300)
-        plt.savefig(report_dir + report_path + '.png', dpi=300)
-
-        image_paths += [
-            PathsCollections(
-                project_name=proj,
-                num_of_bedrooms=bed,
-                paths=report_path
+            fig, ax = ranker_model.plot_tower_view(
+                project_data=bed_data,
+                values=ranker_model.pred_ranking
             )
-        ]
 
+            title = f'Selling Sequence {proj} {bed}-bedroom'
+            ax.set_title(title)
+
+            report_path = title.replace('-', '_').replace(' ', '_')
+            plt.savefig(dev_figure_dir + report_path + '.png', dpi=300)
+            plt.savefig(report_dir + report_path + '.png', dpi=300)
+
+            image_paths += [
+                PathsCollections(
+                    project_name=proj,
+                    num_of_bedrooms=bed,
+                    paths=report_path
+                )
+            ]
 
 paths_df = pd.DataFrame(image_paths)
 image_paths_des = dev_res_dir + 'u_curve_paths_df.plk'

@@ -3,6 +3,7 @@ from typing import Literal
 
 from matplotlib import pyplot as plt
 import seaborn as sns
+from scipy.interpolate import UnivariateSpline
 from scipy.special import comb
 
 import numpy as np
@@ -41,12 +42,12 @@ class CoreRanker:
     row_keys = groupby_keys + ['unit']
 
     def __init__(
-            self,
-            target: Literal['label', 'ranking'],
-            metrics: Literal['relative', 'absolute'],
-            *,
-            benchmark_days_on_mkt: int = 14,
-            min_year: int = 2015
+        self,
+        target: Literal['label', 'ranking'],
+        metrics: Literal['relative', 'absolute'],
+        *,
+        benchmark_days_on_mkt: int = 14,
+        min_year: int = 2015
     ):
         self.metrics = metrics
         self.target = target
@@ -75,7 +76,6 @@ class CoreRanker:
 
     @property
     def query_scripts(self):
-
         ranking_keys = ['dw_project_id', 'num_of_bedrooms']
 
         scripts = f"""
@@ -186,12 +186,32 @@ class RandomSelection:
                 A = np.append(A, self.calculate_random_posbility(s, q))
                 P = np.append(P, q / s)
 
+        x = 'percentage'
+        y = 'accuracy'
+
+        reference = pd.DataFrame(
+            {
+                y: A,
+                x: P
+            }
+        ).sort_values('percentage').drop_duplicates()
+
+        spl = UnivariateSpline(
+            reference.sort_values(x)[x],
+            reference.sort_values(x)[y],
+            k=2
+        )
+
+        new_x = np.linspace(0, 1+1/50, 50)
+        new_y = spl(new_x)
+        new_y = np.clip(new_y, 0, 1)
+
         self.reference = pd.DataFrame(
             {
-                'accuracy': A,
-                'percentage': P
+                y: new_y,
+                x: new_x
             }
-        ).sort_values('percentage')
+        ).sort_values('percentage').drop_duplicates()
 
     @classmethod
     def calculate_random_posbility(cls, N, k):

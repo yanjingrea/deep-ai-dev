@@ -31,5 +31,26 @@ NatureL = {
     'red': '#A4514F'
 }
 
+
+GREY10 = "#1a1a1a"
+GREY30 = "#4d4d4d"
+GREY40 = "#666666"
+GREY50 = "#7f7f7f"
+GREY60 = "#999999"
+GREY75 = "#bfbfbf"
+GREY91 = "#e8e8e8"
+GREY98 = "#fafafa"
+
+COLOR_SCALE = [
+    "#7F3C8D",
+    "#11A579",
+    "#3969AC",
+    "#F2B701",
+    "#E73F74",
+    "#80BA5A",
+    "#E68310",
+    GREY50
+]
+
 def print_in_green_bg(text):
     print('\x1b[6;30;42m' + text + '\x1b[0m')

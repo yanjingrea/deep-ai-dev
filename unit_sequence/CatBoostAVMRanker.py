@@ -59,7 +59,7 @@ class CatBoostAVMRanker:
 
     def __post_init__(self):
 
-        self.raw_data = self._get_raw_data(retrain=False)
+        self.raw_data = self._get_raw_data(retrain=True)
         self.price_difference_col = f'price_{self.metrics}_difference'
 
         self.model = {
@@ -129,7 +129,7 @@ class CatBoostAVMRanker:
 
         return raw_data
 
-    def _get_raw_data(self, retrain=False):
+    def _get_raw_data(self, retrain=True):
 
         raw_data = self._get_core_raw_data(retrain=retrain)
 
@@ -581,6 +581,7 @@ class CatBoostAVMRanker:
         *,
         project_data,
         values,
+        threshold=None,
         fig=None,
         ax=None
     ):
@@ -598,13 +599,40 @@ class CatBoostAVMRanker:
         if not ax:
             fig, ax = plt.subplots(figsize=(8, 8))
 
-        cmap = sns.color_palette("coolwarm", as_cmap=True).copy()
-        cmap.set_bad(color="lightgrey")
-        sns.heatmap(
-            pivot_data, ax=ax,
-            cmap=cmap, annot=True, fmt=".0f", annot_kws={"size": 8},
+        common_params = dict(
+            data=pivot_data, ax=ax,
+            annot=True, fmt=".0f", annot_kws={"size": 8},
             linewidth=0.5, linecolor='lightgrey'
         )
+
+        if threshold is None:
+
+            cmap = sns.color_palette("coolwarm", as_cmap=True).copy()
+            cmap.set_bad(color="lightgrey")
+            sns.heatmap(
+                **common_params,
+                cmap=cmap
+            )
+
+        else:
+
+            sold_mask = pivot_data <= threshold
+            unsold_mask = ~sold_mask
+
+            cmap_sold = sns.light_palette("Reds", as_cmap=True)
+            cmap_unsold = sns.light_palette("Greens", as_cmap=True)
+
+            sns.heatmap(
+                **common_params,
+                mask=sold_mask,
+                cmap=cmap_sold
+            )
+
+            sns.heatmap(
+                **common_params,
+                mask=unsold_mask,
+                cmap=cmap_unsold
+            )
 
         plt.ylabel("Address Floor Number")
         plt.xlabel("Bedroom-Stack")

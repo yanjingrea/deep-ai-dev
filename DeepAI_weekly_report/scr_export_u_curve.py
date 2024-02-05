@@ -7,7 +7,7 @@ image_paths_des = dev_res_dir + 'u_curve_paths_df.plk'
 paths_df = pickle.load(open(image_paths_des, 'rb'))
 paths_df['page'] = paths_df.index // 2
 
-# demand curve image
+# u curve image
 tower_images_codes = f''
 for p in paths_df.page.unique():
     page_content = paths_df[paths_df['page'] == p]
