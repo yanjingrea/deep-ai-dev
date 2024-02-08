@@ -74,14 +74,17 @@ with
                                using (dw_project_id)
                      left join base_sales c
                                using (dw_project_id, num_of_bedrooms)
-                where left(project_launch_month, 4)::int >= 2015
+                where left(project_launch_month, 4)::int >= 2010
             )
         ,
     base_comparable as (
                            select distinct
                                p_base.dw_project_id as dw_project_id,
                                p_base.num_of_bedrooms,
-                               case when p_base.transaction_month is null then to_date(p_base.project_launch_month, 'YYYYMM') else p_base.transaction_month end as transaction_month,
+                               case
+                                   when p_base.transaction_month is null
+                                       then to_date(p_base.project_launch_month, 'YYYYMM')
+                                   else p_base.transaction_month end as transaction_month,
                                case when p_base.sales is null then 0 else p_base.sales end as sales,
                                p_base.average_launch_psf as average_launch_psf,
                                p_base.num_of_units as num_of_units,
@@ -139,12 +142,12 @@ with
                             left join (
                                           select
                                               dw_project_id,
-                                              project_units_zero_rm,
-                                              project_units_one_rm,
-                                              project_units_two_rm,
-                                              project_units_three_rm,
-                                              project_units_four_rm,
-                                              project_units_five_rm,
+                                              project_zero_rm_percentage,
+                                              project_one_rm_percentage,
+                                              project_two_rm_percentage,
+                                              project_three_rm_percentage,
+                                              project_four_rm_percentage,
+                                              project_five_rm_percentage,
                                               project_avg_size_of_zero_rm,
                                               project_avg_size_of_one_rm,
                                               project_avg_size_of_two_rm,
@@ -174,63 +177,166 @@ with
                 ),
     base_nearby_data as (
                             with
+                                base_calendar as (
+                                                     select
+                                                         *
+                                                     from (
+                                                              select distinct
+                                                                  to_date(transaction_month_index, 'YYYYMM') as transaction_month
+                                                              from data_science.ui_master_sg_transactions_view_filled_features_condo
+                                                              where transaction_month_index >= 200801
+                                                          ) as a
+                                                          cross join (
+                                                                         select distinct
+                                                                             neighborhood
+                                                                         from data_science.ui_master_sg_project_geo_view_filled_features_condo
+                                                                     ) as b
+                                                          cross join (
+                                                                         select
+                                                                             0 as num_of_bedrooms
+                                                                         union
+                                                                         select
+                                                                             1
+                                                                         union
+                                                                         select
+                                                                             2
+                                                                         union
+                                                                         select
+                                                                             3
+                                                                         union
+                                                                         select
+                                                                             4
+                                                                         union
+                                                                         select
+                                                                             5
+                                                                         union
+                                                                         select
+                                                                             6
+                                                                     ) c
+                                                     order by 2, 1, 3
+                                                 ),
                                 base_raw_transactions as (
                                                              select
+                                                                 dw_property_id,
                                                                  b.neighborhood,
-                                                                 transaction_month_index,
+                                                                 num_of_bedrooms,
+                                                                 to_date(
+                                                                         transaction_month_index,
+                                                                         'YYYYMM') as transaction_month,
                                                                  unit_price_psf,
-                                                                         row_number()
-                                                                         over (partition by dw_property_id order by transaction_date desc) as seq
+                                                                         row_number(
+                                                                                   )
+                                                                         over (
+                                                                             partition by dw_property_id order by transaction_date desc) as seq
                                                              from data_science.ui_master_sg_transactions_view_filled_features_condo a
                                                                   join data_science.ui_master_sg_project_geo_view_filled_features_condo b
-                                                                       using (dw_project_id)
+                                                                       on a.dw_project_id = b.dw_project_id
+                                                                        and a.transaction_month_index::int >= b.project_launch_month::int >= 200801
                                                              where a.property_type_group = 'Condo'
                                                                and transaction_sub_type = 'new sale'
-                                                               and project_launch_month::int > 200912
-                                                         ),
+
+                                                         )
+                                ,
                                 base_nearby_num_of_trans as (
                                                                 select
                                                                     neighborhood,
-                                                                    to_date(transaction_month_index, 'YYYYMM') as transaction_month,
-                                                                    count(*) as num_of_transactions,
+                                                                    transaction_month,
+                                                                    num_of_bedrooms,
+                                                                    count(dw_property_id) as num_of_transactions,
 --                                                                     percentile_cont(0.25) within group (order by unit_price_psf) as percentile_25th_psf,
 --                                                                     percentile_cont(0.75) within group (order by unit_price_psf) as percentile_75th_psf,
                                                                     avg(unit_price_psf) as average_psf
-                                                                from base_raw_transactions
-                                                                where seq = 1
-                                                                group by 1, 2
-                                                                order by 1, 2
+                                                                from base_calendar a
+                                                                     left join (select * from base_raw_transactions where seq = 1) b
+                                                                               using (transaction_month, neighborhood, num_of_bedrooms)
+
+                                                                group by 1, 2, 3
+                                                                order by 1, 3, 2
                                                             ),
                                 nearby_num_of_units as (
                                                            select
                                                                neighborhood,
-                                                               to_date(project_launch_month, 'YYYYMM') as transaction_month,
-                                                               sum(proj_num_of_units) as num_of_new_units
+                                                               to_date(
+                                                                       project_launch_month,
+                                                                       'YYYYMM') as transaction_month,
+                                                               sum(
+                                                                       project_units_zero_rm) as units_zero_rm,
+                                                               sum(
+                                                                       project_units_one_rm) as units_one_rm,
+                                                               sum(
+                                                                       project_units_two_rm) as units_two_rm,
+                                                               sum(
+                                                                       project_units_three_rm) as units_three_rm,
+                                                               sum(
+                                                                       project_units_four_rm) as units_four_rm,
+                                                               sum(
+                                                                       project_units_five_rm) as units_five_rm,
+                                                               sum(
+                                                                           proj_num_of_units -
+                                                                           project_units_zero_rm -
+                                                                           project_units_one_rm -
+                                                                           project_units_two_rm -
+                                                                           project_units_three_rm -
+                                                                           project_units_four_rm -
+                                                                           project_units_five_rm
+                                                               ) as units_six_rm
                                                            from data_science.ui_master_sg_project_geo_view_filled_features_condo
-                                                           where project_launch_month::int > 200912
+                                                           where project_launch_month::int >= 200801
                                                            group by 1, 2
                                                            order by 1, 2
-                                                       )
+                                                       ),
+                                base_seperated_units as (
+                                                            select
+                                                                neighborhood,
+                                                                num_of_bedrooms,
+                                                                transaction_month,
+                                                                num_of_transactions,
+                                                                average_psf,
+                                                                case
+                                                                    when num_of_bedrooms = 0 then units_zero_rm
+                                                                    when num_of_bedrooms = 1 then units_one_rm
+                                                                    when num_of_bedrooms = 2 then units_two_rm
+                                                                    when num_of_bedrooms = 3 then units_three_rm
+                                                                    when num_of_bedrooms = 4 then units_four_rm
+                                                                    when num_of_bedrooms = 5 then units_five_rm
+                                                                    when num_of_bedrooms = 6 then units_six_rm
+                                                                    end as temp_num_of_new_units,
+                                                                case when temp_num_of_new_units is null then 0 else temp_num_of_new_units
+                                                                    end as num_of_new_units
+                                                            from (
+                                                                     select
+                                                                         *
+                                                                     from base_nearby_num_of_trans
+                                                                 ) as "rnot*"
+                                                                 full outer join nearby_num_of_units
+                                                                                 using (neighborhood, transaction_month)
+                                                        )
                             select
                                 neighborhood,
                                 transaction_month,
-                                        sum(num_of_new_units)
-                                        over (partition by neighborhood order by transaction_month rows between unbounded preceding and 1 preceding) as cum_stock,
-                                        sum(num_of_transactions)
-                                        over (partition by neighborhood order by transaction_month rows between unbounded preceding and 1 preceding) as com_sales,
+                                num_of_bedrooms,
+                                average_psf as nearby_average_psf,
+                                        sum(
+                                        num_of_new_units)
+                                        over (
+                                            partition by neighborhood, num_of_bedrooms order by transaction_month rows between unbounded preceding and 1 preceding) as cum_stock,
+                                        sum(
+                                        num_of_transactions)
+                                        over (
+                                            partition by neighborhood, num_of_bedrooms order by transaction_month rows between unbounded preceding and 1 preceding
+                                            ) as com_sales,
                                 cum_stock - com_sales as nearby_num_of_remaining_units,
-                                        sum(num_of_new_units)
-                                        over (partition by neighborhood order by transaction_month rows between 7 preceding and 1 preceding) as latest_half_year_launched_units,
+                                        sum(
+                                        num_of_new_units)
+                                        over (
+                                            partition by neighborhood, num_of_bedrooms order by transaction_month rows between 7 preceding and 1 preceding) as latest_half_year_nearby_launched_units,
                                         sum(num_of_transactions)
-                                        over (partition by neighborhood order by transaction_month rows between 7 preceding and 1 preceding) as latest_half_year_sold_units,
-                                average_psf as nearby_average_psf
-                            from (
-                                     select *
-                                     from base_nearby_num_of_trans
-                                 ) as "rnot*"
-                                 left outer join nearby_num_of_units
-                                                 using (neighborhood, transaction_month)
-                            order by 1, 2
+                                        over (
+                                            partition by neighborhood, num_of_bedrooms order by transaction_month rows between 7 preceding and 1 preceding) as latest_half_year_nearby_sold_units,
+                                avg(average_psf) over (
+                                            partition by neighborhood, num_of_bedrooms order by transaction_month rows between 7 preceding and 1 preceding)as latest_half_year_nearby_average_psf
+                            from base_seperated_units
+                            order by 1, 3, 2
                         )
 select
     num_of_bedrooms,
@@ -251,19 +357,16 @@ select
     meters_to_mrt,
     num_of_good_schools,
     nearby_num_of_remaining_units,
-    case
-        when latest_half_year_launched_units is null then 0
-        else latest_half_year_launched_units end as latest_half_year_launched_units,
-    case
-        when latest_half_year_sold_units is null then 0
-        else latest_half_year_sold_units end as latest_half_year_sold_units
+    latest_half_year_nearby_launched_units,
+    latest_half_year_nearby_sold_units,
+    latest_half_year_nearby_average_psf
 from base_static a
      left join base_comparable b
                using (dw_project_id)
      left join base_geo c
                using (dw_project_id)
      left join base_nearby_data d
-               using (neighborhood, transaction_month)
+               using (neighborhood, transaction_month, num_of_bedrooms)
 where similarity_order = 1
   and transaction_month >= '2010-01-01'
 order by launch_date desc, project_display_name, num_of_bedrooms

@@ -35,6 +35,7 @@ def scatter_plot_with_reg_and_label(
     y = data[y_col]
 
     # Colors Setting ------------------------------------------------------------
+
     data['label'], qcut_label = pd.qcut(data[label_col], q=q, retbins=True)
     qcut_label = qcut_label.astype(int)[:-1]
     label_colors = ["#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2"]
@@ -131,7 +132,11 @@ def scatter_plot_with_reg_and_label(
         if temp.empty:
             continue
 
-        ps = temp.sample(5).values
+        if len(temp) >= 5:
+            ps = temp.sample(5).values
+        else:
+            ps = temp.values
+
         project_highlight = np.append(project_highlight, ps)
         pos += [position]
 

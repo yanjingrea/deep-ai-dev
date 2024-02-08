@@ -1,18 +1,23 @@
 from dataclasses import dataclass
-from typing import Optional, Union, Literal
+from typing import Optional, Union, Literal, Any
 
 import pandas as pd
 import shap
 from matplotlib import pyplot as plt
+
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 import numpy as np
+from statsmodels.tools.typing import ArrayLike
+
 from xgboost import XGBRegressor
 
 from constants.redshift import query_data
 
 from launch_weekend.scatter_plot import scatter_plot_with_reg_and_label
+
+ListLike = Union[pd.DataFrame, pd.Series, np.ndarray, list, set]
 
 
 @dataclass
@@ -38,38 +43,32 @@ class LaunchSalesModel:
         # 'project_age',
         'land_max_gfa',
         # 'land_size_sqft',
-        # 'project_units_zero_rm',
-        # 'project_units_one_rm',
-        # 'project_units_two_rm',
-        # 'project_units_three_rm',
-        # 'project_units_four_rm',
-        # 'project_units_five_rm',
-        # 'project_avg_size_of_zero_rm',
-        # 'project_avg_size_of_one_rm',
-        # 'project_avg_size_of_two_rm',
-        # 'project_avg_size_of_three_rm',
-        # 'project_avg_size_of_four_rm',
-        # 'project_avg_size_of_five_rm',
-        # 'region', 'zone', 'neighborhood', 'district',
+        'project_one_rm_percentage', 'project_two_rm_percentage',
+        'project_three_rm_percentage', 'project_four_rm_percentage',
+        'project_five_rm_percentage', 'project_avg_size_of_zero_rm',
+        'project_avg_size_of_one_rm', 'project_avg_size_of_two_rm',
+        'project_avg_size_of_three_rm', 'project_avg_size_of_four_rm',
+        'project_avg_size_of_five_rm',
+        'region',
+        # 'zone', 'neighborhood', 'district',
         'launch_year',
-        # 'dw_project_id',
-        # 'num_of_bedrooms',
         # 'sales',
         'average_launch_psf',
         'num_of_units',
         # 'ref_project_id',
-        'ref_sales',
+        # 'ref_sales',
         'ref_average_launch_psf',
-        # 'ref_num_of_units',
-        # 'ref_sales_rate',
+        'ref_num_of_units',
+        'ref_sales_rate',
         # 'similarity_order',
-        # 'km_to_sg_cbd',
+        'km_to_sg_cbd',
         # 'num_of_bus_stops',
         'meters_to_mrt',
         # 'num_of_good_schools',
         'nearby_num_of_remaining_units',
-        'latest_half_year_launched_units',
-        'latest_half_year_sold_units'
+        'latest_half_year_nearby_launched_units',
+        'latest_half_year_nearby_sold_units',
+        'latest_half_year_nearby_average_psf'
     ]
 
     sales_rate_col = 'sales_rate'
@@ -95,7 +94,9 @@ class LaunchSalesModel:
         raw_data = self.query_raw_data()
 
         raw_data = raw_data.dropna(subset=[self.sales_col])
-        raw_data = raw_data[raw_data['residential_unit_count'] > self.min_stock]
+        raw_data = raw_data[
+            (raw_data['residential_unit_count'] > self.min_stock)
+        ]
 
         for bed_text in [
             'zero',
@@ -149,22 +150,44 @@ class LaunchSalesModel:
     def fit_and_test_regressor(
         self,
         *,
-        train_projects: Union[list, set, np.ndarray],
-        test_projects: Union[list, set, np.ndarray]
+        data,
+        train_projects: ListLike,
+        test_projects: ListLike,
+        agg: bool = True
     ):
 
-        train = self.data[self.data[self.project_key].isin(train_projects)].copy()
-        test = self.data[self.data[self.project_key].isin(test_projects)].copy()
-
         # test = test[~test['ref_average_launch_psf'].isna()].copy()
-
         # test = test[test[self.sales_col] != 0].copy()
+
+        train = data[data[self.project_key].isin(train_projects)].copy()
+        test = data[data[self.project_key].isin(test_projects)].copy()
 
         if True:
             model = XGBRegressor(random_state=123)
+
+            # train = train[train[self.y_col] > 1].copy()
+
+            if self.y_col == self.sales_rate_col:
+                w = np.log((train['sales_rate'] / 100 * train['num_of_units'] + 2).astype(float))
+            else:
+                w = None
+
+            fw = pd.Series([1, ] * len(self.final_x_cols), index=self.final_x_cols)
+            fw.loc[[
+                'average_launch_psf',
+                'meters_to_mrt',
+                'nearby_num_of_remaining_units',
+                'num_of_bedrooms',
+                'num_of_units',
+                'ref_sales_rate'
+            ]] = 2
+
             model.fit(
                 train[self.final_x_cols].astype(float),
-                train[self.y_col].astype(int)
+                train[self.y_col].astype(float),
+                # sample_weight=w,
+                # feature_weights=fw,
+                # base_margin=[20,]*len(train),
             )
 
             features_importance = pd.Series(
@@ -176,8 +199,8 @@ class LaunchSalesModel:
         else:
 
             from sklearn.linear_model import LinearRegression
-            train = train.dropna()
-            test = test.dropna()
+            train = train.dropna(subset=self.final_x_cols)
+            test = test.dropna(subset=self.final_x_cols)
 
             model = LinearRegression(fit_intercept=True).fit(
                 train[self.final_x_cols].astype(float),
@@ -199,7 +222,7 @@ class LaunchSalesModel:
 
         raw_pred_y = model.predict(test[self.final_x_cols].astype(float))
 
-        if True:
+        if False:
             self.plot_projects_waterfall(
                 model,
                 test
@@ -213,7 +236,7 @@ class LaunchSalesModel:
 
         if self.y_col == 'sales_rate':
             test[self.sales_col] = test[self.sales_rate_col] / 100 * test['num_of_units']
-            test[self.pred_sales_col] = test[self.pred_sales_rate_col]/ 100 * test['num_of_units']
+            test[self.pred_sales_col] = test[self.pred_sales_rate_col] / 100 * test['num_of_units']
 
         output_cols = [
             self.sales_col,
@@ -226,17 +249,21 @@ class LaunchSalesModel:
             as_index=False
         )[output_cols].mean().convert_dtypes()
 
-        test_projects_data = test_projects_data.groupby(
-            [self.project_key],
-            as_index=False
-        )[output_cols].sum().convert_dtypes()
+        if agg:
 
-        test_projects_data[self.sales_rate_col] = test_projects_data[self.sales_col] / test_projects_data['num_of_units']
-        test_projects_data[self.pred_sales_rate_col] = test_projects_data[self.pred_sales_col] / test_projects_data['num_of_units']
+            test_projects_data = test_projects_data.groupby(
+                [self.project_key],
+                as_index=False
+            )[output_cols].sum().convert_dtypes()
+
+        test_projects_data[self.sales_rate_col] = test_projects_data[self.sales_col] / test_projects_data[
+            'num_of_units']
+        test_projects_data[self.pred_sales_rate_col] = test_projects_data[self.pred_sales_col] / test_projects_data[
+            'num_of_units']
 
         return test_projects_data
 
-    def iter_test(self, *, n_groups=10, test_min_year=None):
+    def iter_test(self, *, n_groups=10, test_min_year=None, agg: bool = True):
 
         if test_min_year:
             test_projects = self.data[self.data['launch_year'] >= test_min_year][self.project_key].unique()
@@ -257,7 +284,26 @@ class LaunchSalesModel:
             test_p = test_projects[idx_list[i - 1]: idx_num]
             train_p = set(test_projects).difference(test_p)
 
-            res = self.fit_and_test_regressor(train_projects=train_p, test_projects=test_p)
+            common = dict(
+                train_projects=train_p,
+                test_projects=test_p,
+                agg=agg
+            )
+
+            if agg:
+
+                res = self.fit_and_test_regressor(
+                    data=self.data,
+                    **common
+                )
+
+            else:
+
+                res = self.data.groupby('num_of_bedrooms').apply(
+                    lambda df: self.fit_and_test_regressor(data=df, **common)
+                )
+
+
             combined_test_data = pd.concat([combined_test_data, res], ignore_index=True)
 
         return combined_test_data
@@ -276,7 +322,6 @@ class LaunchSalesModel:
         explainer = shap.Explainer(model, X)
         shap_values = explainer(X)
 
-
         for idx in test_data.index:
             p = test_data['project_display_name'].loc[idx]
             bed = test_data['num_of_bedrooms'].loc[idx]
@@ -285,7 +330,7 @@ class LaunchSalesModel:
             ax = shap.plots.waterfall(shap_values[idx], max_display=20, show=False)
 
             title = f'{self.y_col.replace(" ", "_")} prediction ' + p + f' {bed}-bedroom'
-            ax.set_title(title+f'\nactual_{self.y_col}: {int(actual_sales)}')
+            ax.set_title(title + f'\nactual_{self.y_col}: {int(actual_sales)}')
 
             plt.savefig(
                 f'/Users/wuyanjing/PycharmProjects/app/launch_weekend/output/'
@@ -295,34 +340,52 @@ class LaunchSalesModel:
 
             plt.close()
 
-    def evaluate(self, *, n_groups=10, test_min_year=None):
+    def evaluate(self, *, n_groups=10, test_min_year=None, agg=True):
 
-        combined_test_data = self.iter_test(n_groups=n_groups, test_min_year=test_min_year)
+        combined_test_data = self.iter_test(
+            n_groups=n_groups,
+            test_min_year=test_min_year,
+            agg=agg
+        )
 
-        y_pred = combined_test_data[self.pred_sales_col].values
-        y_true = combined_test_data[self.sales_col].values
+        def calculate_error(y_pred, y_true):
 
-        error_to_sales = pd.Series(y_pred[y_true != 0] / y_true[y_true != 0] - 1).abs()
-        print(f'mean absolute percentage error: {error_to_sales.mean() * 100 :.2f}%')
-        print(f'median absolute percentage error: {error_to_sales.median() * 100 :.2f}%')
+            error_to_sales = pd.Series(y_pred[y_true != 0] / y_true[y_true != 0] - 1).abs()
+            print(f'mean absolute percentage error: {error_to_sales.mean() * 100 :.2f}%')
+            print(f'median absolute percentage error: {error_to_sales.median() * 100 :.2f}%')
 
-        error_to_stock = pd.Series(np.abs(y_pred-y_true)/combined_test_data['num_of_units'])
-        print(f'mean absolute percentage of stock error: {error_to_stock.mean() * 100 :.2f}%')
-        print(f'median absolute percentage of stock error: {error_to_stock.median() * 100 :.2f}%')
+            error_to_stock = pd.Series(np.abs(y_pred - y_true) / combined_test_data['num_of_units'])
+            print(f'mean absolute percentage of stock error: {error_to_stock.mean() * 100 :.2f}%')
+            print(f'median absolute percentage of stock error: {error_to_stock.median() * 100 :.2f}%')
 
-        interval = np.arange(0.025, 0.125, 0.025)
+            interval = np.append(np.arange(0.025, 0.125, 0.025), 0.2)
 
-        sample_size = len(combined_test_data)
-        print('Error compared to Sales:')
-        for t in interval:
-            correct_rate = len(error_to_sales[error_to_sales <= t]) / sample_size
-            print(f'correct rate (error <= {t * 100: .0f}%): {correct_rate * 100: .2f}%')
+            sample_size = len(y_pred)
 
-        print(f'-' * 20)
-        print('Error compared to Stock:')
-        for t in interval:
-            correct_rate = len(error_to_stock[error_to_stock <= t]) / sample_size
-            print(f'correct rate (error <= {t * 100: .0f}%): {correct_rate * 100: .2f}%')
+            if sample_size > 0:
+
+                print('Error compared to Sales:')
+                for t in interval:
+                    correct_rate = len(error_to_sales[error_to_sales <= t]) / sample_size
+                    print(f'correct rate (error <= {t * 100: .0f}%): {correct_rate * 100: .2f}%')
+
+                print(f'-' * 20)
+                print('Error compared to Stock:')
+                for t in interval:
+                    correct_rate = len(error_to_stock[error_to_stock <= t]) / sample_size
+                    print(f'correct rate (error <= {t * 100: .0f}%): {correct_rate * 100: .2f}%')
+
+        if agg:
+            pred = combined_test_data[self.pred_sales_col].values
+            true = combined_test_data[self.sales_col].values
+            calculate_error(pred, true)
+
+        else:
+            for b in np.arange(1, 6):
+                print(f'-' * 20)
+                print(f'{b}-bedroom')
+                bed_test_data = combined_test_data[combined_test_data['num_of_bedrooms'] == b]
+                calculate_error(bed_test_data[self.pred_sales_col], bed_test_data[self.sales_col])
 
         print(f'-' * 20)
         print('Features Importance:')
@@ -361,6 +424,7 @@ class LaunchSalesModel:
 
 
 LaunchSalesModel(
-    min_stock=50,
+    min_stock=75,
+    min_year=2015,
     y_col='sales_rate'
-).evaluate(test_min_year=2022)
+).evaluate(test_min_year=2020, agg=False)
