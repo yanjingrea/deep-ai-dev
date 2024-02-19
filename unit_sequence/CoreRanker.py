@@ -183,7 +183,7 @@ class RandomSelection:
                 if q > s:
                     continue
 
-                A = np.append(A, self.calculate_random_posbility(s, q))
+                A = np.append(A, self.calculate_random_possibility(s, q))
                 P = np.append(P, q / s)
 
         x = 'percentage'
@@ -214,14 +214,14 @@ class RandomSelection:
         ).sort_values('percentage').drop_duplicates()
 
     @classmethod
-    def calculate_random_posbility(cls, N, k):
+    def calculate_random_possibility(cls, N, k):
         all_comb = comb(N, k)
-        postive_true = np.arange(0, k + 1)
-        postive_false = k - postive_true
-        negative_true = N - k - postive_false
+        positive_true = np.arange(0, k + 1)
+        positive_false = k - positive_true
+        negative_true = N - k - positive_false
 
-        prob = comb(k, postive_true) * comb(N - k, k - postive_true) / all_comb
-        score = (postive_true + negative_true) / N
+        prob = comb(k, positive_true) * comb(N - k, k - positive_true) / all_comb
+        score = (positive_true + negative_true) / N
 
         return sum(prob * score)
 

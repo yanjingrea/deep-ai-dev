@@ -64,73 +64,37 @@ class ComparableDemandModel:
         if isinstance(test_projects, str):
             test_projects = [test_projects]
 
-        if test_projects == ['b00873b9b7adb4c799c5cb7ff5ac4150']:
-
-            base_new_launch_projects = f"""
-            select
-                'b00873b9b7adb4c799c5cb7ff5ac4150'::varchar as dw_project_id,
-                1.3855::float as avg_lat,
-                103.8336::float as avg_long
-            """
-
-        elif test_projects == ['86bcc94255d04aaab84c1a5a11f3f5b0']:
-
-            base_new_launch_projects = f"""
-            select
-                '86bcc94255d04aaab84c1a5a11f3f5b0'::varchar as dw_project_id,
-                1.3622899330455676::float as avg_lat,
-                103.76381592854237::float as avg_long
-            """
-        elif test_projects == ['f7fea87e1a59592e817cd84c2b416bb4']:
-
-            base_new_launch_projects = f"""
-            select
-                'f7fea87e1a59592e817cd84c2b416bb4'::varchar as dw_project_id,
-                1.361184629001846::float as avg_lat,
-                103.7411523137532::float as avg_long
-            """
-
-        else:
-            base_new_launch_projects = f"""
-            select distinct
-                    dw_project_id,
-                    avg(latitude) as avg_lat,
-                    avg(longitude) as avg_long
-                from data_science.ui_master_sg_project_geo_view_filled_features_condo a
-                join data_science.ui_master_sg_properties_view_filled_static_features_condo c
-                    using (dw_project_id)
-                where dw_project_id in ({','.join([i.__repr__() for i in test_projects])})
-                group by 1
-            """
+        base_new_launch_projects = f"""
+                    select
+                        project_dwid as dw_project_id,
+                        latitude,
+                        longitude,
+                        to_date(left(launch_date, 7), 'YYYY-MM') as project_launch_month
+                    from ui_app.project_summary_prod_sg
+                """
 
         nearby_projects = query_data(
             f"""
             with base_new_launch_projects as (
                 {base_new_launch_projects}
+                where dw_project_id in ({','.join([i.__repr__() for i in test_projects])})
             ),
             base_historical_project as (
-                select distinct
-                    dw_project_id,
-                    avg(latitude) as avg_lat,
-                    avg(longitude) as avg_long
-                from data_science.ui_master_sg_project_geo_view_filled_features_condo a
-                join data_science.ui_master_sg_properties_view_filled_static_features_condo c
-                    using (dw_project_id)
+                {base_new_launch_projects}
                 where dateadd(year, -{self.max_year_gap}, current_date) <= to_date(project_launch_month, 'YYYYMM')
-                group by 1
             )
             select distinct
                 new_p.dw_project_id as base_project_id,
                 his_p.dw_project_id as nearby_project_id,
                 ST_DistanceSphere(
-                    st_point(his_p.avg_long, his_p.avg_lat),
-                    st_point(new_p.avg_long, new_p.avg_lat)
+                    st_point(his_p.longitude, his_p.latitude),
+                    st_point(new_p.longitude, new_p.latitude)
                 ) as distance
             from base_new_launch_projects new_p
             join base_historical_project his_p
                 on ST_DistanceSphere(
-                    st_point(his_p.avg_long, his_p.avg_lat),
-                    st_point(new_p.avg_long, new_p.avg_lat)
+                    st_point(his_p.longitude, his_p.latitude),
+                    st_point(new_p.longitude, new_p.latitude)
                 ) <= {max_distance}
             """
         )

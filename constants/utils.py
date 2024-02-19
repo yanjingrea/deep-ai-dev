@@ -4,6 +4,15 @@ from os.path import dirname, realpath
 OUTPUT_DIR = dirname(realpath(__file__)) + os.sep + 'local' + os.sep
 
 
+def get_output_dir(file_path):
+
+    output_dir = dirname(realpath(file_path)) + os.sep + 'output' + os.sep
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    return output_dir
+
+
 # ---------------------------------------------------------------------------
 def set_plot_format(plt):
     # -----------------------------------------------------
@@ -31,7 +40,6 @@ NatureL = {
     'red': '#A4514F'
 }
 
-
 GREY10 = "#1a1a1a"
 GREY30 = "#4d4d4d"
 GREY40 = "#666666"
@@ -51,6 +59,7 @@ COLOR_SCALE = [
     "#E68310",
     GREY50
 ]
+
 
 def print_in_green_bg(text):
     print('\x1b[6;30;42m' + text + '\x1b[0m')

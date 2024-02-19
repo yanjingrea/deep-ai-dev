@@ -9,7 +9,8 @@ bedroom_data = ECBaseData(
 # if include bedroom type data
 if False:
     project_data = BaseCMData(aggregate_level='project')
-    training_data = pd.concat([project_data.data, bedroom_data.data], ignore_index=True)
+    training_data = pd.concat([launch_weekend.classification.training_data.data,
+                               launch_weekend.classification.training_data.data], ignore_index=True)
     forecasting_data = pd.concat(
         [
             project_data.forecasting_data,

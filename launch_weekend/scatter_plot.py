@@ -7,7 +7,9 @@ from matplotlib.lines import Line2D
 from sklearn.linear_model import LinearRegression
 
 from constants.utils import set_plot_format
+
 set_plot_format(plt)
+
 
 def adjust_lightness(color, amount=0.5):
     import matplotlib.colors as mc
@@ -140,19 +142,19 @@ def scatter_plot_with_reg_and_label(
         project_highlight = np.append(project_highlight, ps)
         pos += [position]
 
-    # Add labels -----------------------------------------------------
-    texts = []
-
-    for idx, project in enumerate(data['project_display_name']):
-        if project in project_highlight:
-            px, py = x[idx]+0.1, y[idx]+0.15
-            texts.append(ax.text(px, py, project, fontsize=10))
-
-    adjust_text(
-        texts,
-        expand=(0.1, 0.15),
-        arrowprops=dict(arrowstyle="-", lw=0.5),
-        ax=ax
-    )
+    # # Add labels -----------------------------------------------------
+    # texts = []
+    #
+    # for idx, project in enumerate(data['project_display_name']):
+    #     if project in project_highlight:
+    #         px, py = x.iloc[idx] + 0.1, y.iloc[idx] + 0.15
+    #         texts.append(ax.text(px, py, project, fontsize=10))
+    #
+    # adjust_text(
+    #     texts,
+    #     expand=(0.1, 0.15),
+    #     arrowprops=dict(arrowstyle="-", lw=0.5),
+    #     ax=ax
+    # )
 
     return fig, ax

@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 
 from constants.utils import NatureD, NatureL
-from demand_model_utils.scr_coef import query_adjust_coef
+from demand_curve_main.scr_coef import query_adjust_coef
 from demand_curve_condo.scr_common_training import comparable_demand_model, bedroom_data
 from DeepAI_weekly_report.test.func_helper_function import (
     dev_figure_dir, report_dir,
@@ -15,7 +15,7 @@ from DeepAI_weekly_report.test.func_helper_function import (
 from DeepAI_weekly_report.test.cls_paths_collections import PathsCollections
 
 manual_data = pd.read_csv(
-    '/demand_curve_condo/local/manual_input.csv'
+    '/Users/wuyanjing/PycharmProjects/app/demand_curve_condo/local/manual_input.csv'
 )
 
 manual_data['transaction_month'] = pd.to_datetime(manual_data['transaction_month'])
@@ -23,10 +23,13 @@ manual_data = bedroom_data.calculate_launching_period(manual_data)
 
 # manual_data['price'] = manual_data['price'] / query_adjust_coef(manual_data)
 
-['Orchard Sophia', 'Mori']
+target_projects = ['Lentoria', 'The Hill @ One North']
 
 image_paths = []
 for idx in np.arange(len(manual_data)):
+
+    if manual_data['project_name'].iloc[idx] not in target_projects:
+        continue
 
     adjusted_project_data = manual_data.iloc[[idx]].copy().reset_index()
 
@@ -59,6 +62,10 @@ for idx in np.arange(len(manual_data)):
                 max_launching_period = 3
             else:
                 max_launching_period = None
+
+    elif project_name in ['Lentoria', 'The Hill @ One North']:
+        include_ids = None
+        max_launching_period = 3
     else:
         include_ids = None
         max_launching_period = None

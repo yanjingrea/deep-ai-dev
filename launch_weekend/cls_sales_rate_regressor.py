@@ -80,7 +80,7 @@ class LaunchSalesModel:
     def query_raw_data(self):
 
         with open(
-                'proj_sales_rate_nearby.sql',
+                'evolution_training_data.sql',
                 'r'
         ) as sql_file:
             sql_script = sql_file.read()
@@ -303,7 +303,6 @@ class LaunchSalesModel:
                     lambda df: self.fit_and_test_regressor(data=df, **common)
                 )
 
-
             combined_test_data = pd.concat([combined_test_data, res], ignore_index=True)
 
         return combined_test_data
@@ -423,8 +422,9 @@ class LaunchSalesModel:
         print()
 
 
-LaunchSalesModel(
-    min_stock=75,
-    min_year=2015,
-    y_col='sales_rate'
-).evaluate(test_min_year=2020, agg=False)
+if False:
+    LaunchSalesModel(
+        min_stock=75,
+        min_year=2015,
+        y_col='sales_rate'
+    ).evaluate(test_min_year=2020, agg=False)

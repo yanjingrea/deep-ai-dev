@@ -1,3 +1,4 @@
+
 from demand_curve_condo.cls_cm_data import CondoCMData
 from demand_curve_main.cls_comparable_model import *
 
@@ -6,7 +7,8 @@ bedroom_data = CondoCMData(aggregate_level='bedrooms')
 # if include bedroom type data
 if False:
     project_data = BaseCMData(aggregate_level='project')
-    training_data = pd.concat([project_data.data, bedroom_data.data], ignore_index=True)
+    training_data = pd.concat([launch_weekend.classification.training_data.data,
+                               launch_weekend.classification.training_data.data], ignore_index=True)
     forecasting_data = pd.concat(
         [
             project_data.forecasting_data,
