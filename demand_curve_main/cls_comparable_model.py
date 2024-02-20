@@ -1,7 +1,7 @@
 import warnings
 
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Optional, Union, Literal
 
 import numpy as np
 import pandas as pd
@@ -19,6 +19,7 @@ class ComparableDemandModel:
 
     data: pd.DataFrame
     forecasting_data: pd.DataFrame
+    target: Literal['sales', 'sales_rate'] = 'sales'
 
     features = [
         'price',
@@ -205,7 +206,7 @@ class ComparableDemandModel:
         def fit_local_linear_model(data):
 
             local_model = BaseLinearDemandModel(
-                quantity=self.quantity,
+                quantity=self.target,
                 price=self.price,
                 features=self.features
             ).fit(data)
@@ -288,7 +289,7 @@ class ComparableDemandModel:
                     ]
                 training_data = pd.concat([training_data, include_data], ignore_index=True)
 
-            if (len(training_data) < 5) or (training_data.nunique()['dw_project_id'] < 3):
+            if (len(training_data) < 5 and max_launching_period > 3) or (training_data.nunique()['dw_project_id'] < 3):
                 if max_distance != n_attempt * distance_gap:
                     continue
                 elif project_data.price.mean() > self.data.price.quantile(0.75):

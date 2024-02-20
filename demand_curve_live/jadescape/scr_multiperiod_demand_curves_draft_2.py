@@ -5,13 +5,14 @@ import pandas as pd
 from matplotlib import pyplot as plt
 import seaborn as sns
 
+import launch_weekend.classification.training_data
 from constants.utils import NatureD, NatureL
 from demand_model_utils.cls_plt_demand_curve import PltDemandCurve
 from demand_model_utils.scr_coef import query_adjust_coef
 
 from demand_curve_live.jadescape.scr_get_model import linear_models, training_data_class
 
-training_data = training_data_class.data.sort_values(
+training_data = launch_weekend.classification.training_data.data.sort_values(
     by=['dw_project_id', 'num_of_bedrooms', 'transaction_month']
 )
 

@@ -41,6 +41,11 @@ for idx in np.arange(len(manual_data)):
     project_name = adjusted_project_data.project_name.iloc[0]
     num_of_bedroom = adjusted_project_data.num_of_bedrooms.iloc[0]
 
+    include_ids = None
+    max_launching_period = None
+    exclude_ids = None
+
+
     if project_name == 'The Arcady at Boon Keng':
         if num_of_bedroom in [3, 4]:
             include_ids = [
@@ -63,19 +68,40 @@ for idx in np.arange(len(manual_data)):
             else:
                 max_launching_period = None
 
-    elif project_name in ['Lentoria', 'The Hill @ One North']:
-        include_ids = None
-        max_launching_period = 3
-    else:
-        include_ids = None
-        max_launching_period = None
+    if project_name == 'Lentoria':
+
+        if num_of_bedroom == 1:
+            max_launching_period = 1
+            include_ids = [
+                '5db64f51ff8b9b30a2270dd44cc15845',
+                'c3532fd0b2e9e84d9ad9f36c8f675230',
+            ]
+        else:
+            max_launching_period = 3
+
+    elif project_name == 'The Hill @ One North':
+
+        if num_of_bedroom == 2:
+            max_launching_period = 6
+            exclude_ids = ['6c7a8743f25477e921c882cd04bc0470']
+        elif num_of_bedroom == 3:
+            max_launching_period = 1
+            exclude_ids = [
+                '6c7a8743f25477e921c882cd04bc0470',
+                # '2abe67cd206094d32053d93764cc9a65'
+            ]
+        else:
+            max_launching_period = 3
+
+
 
     linear_model, adjusted_training_data = comparable_demand_model.fit_project_room_demand_model(
         project_id=adjusted_project_data['dw_project_id'].iloc[0],
         project_data=rebased_project_data,
         num_of_bedroom=num_of_bedroom,
         include_ids=include_ids,
-        max_launching_period=max_launching_period
+        max_launching_period=max_launching_period,
+        exclude_ids=exclude_ids
     )
 
 

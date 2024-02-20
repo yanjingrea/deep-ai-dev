@@ -13,18 +13,30 @@ from demand_curve_main.cls_plt_demand_curve import PltDemandCurve
 
 @dataclass
 class BaseLinearDemandModel:
-    quantity: str
+    quantity: Literal['sales', 'sales_rate']
     price: str
     features: list
     core_model: statsmodels.regression.linear_model = None
     params = None
+
+    @staticmethod
+    def logit(p):
+        return np.log(p/(1-p))
 
     def process_data(self, data):
 
         data = data.copy()
 
         data[self.price] = np.log(data[self.price])
-        data[self.quantity] = np.log(data[self.quantity])
+
+        if self.quantity == 'sales':
+            data[self.quantity] = np.log(data[self.quantity])
+        else:
+
+            if 'sales_rate' not in data.columns:
+                data['sales_rate'] = data['sales']/data['num_of_units']
+
+            # data[self.quantity] = self.logit(p=data[self.quantity])
 
         y = data[self.quantity]
         X = data[self.features]
@@ -53,7 +65,15 @@ class BaseLinearDemandModel:
 
     def predict(self, data, last_period_discount=1):
         _, X = self.process_data(data)
-        temp_y_hat = np.exp(self.core_model.predict(X)) * last_period_discount
+
+        raw_y_hat = self.core_model.predict(X)
+
+        if self.quantity == 'sales':
+            temp_y_hat = np.exp(raw_y_hat) * last_period_discount
+        else:
+            temp_y_hat = raw_y_hat * data['num_of_units'] * last_period_discount
+
+
         pred_Q = np.clip(
             temp_y_hat,
             0,

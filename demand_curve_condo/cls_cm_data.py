@@ -220,6 +220,7 @@ class CondoCMData(BaseCMData):
         if 'tenure' in self.features:
             data['tenure'] = data['tenure'].apply(lambda a: 1 if a == 'freehold' else 0)
         data['transaction_month'] = pd.to_datetime(data['transaction_month'])
+        data['sales_rate'] = data[self.quantity] / data['num_of_units']
         data = data[~data[self.price].isna()].copy()
 
         return data

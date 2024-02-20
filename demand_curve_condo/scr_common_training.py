@@ -25,7 +25,8 @@ forecasting_data = forecasting_data.sort_values(by=sequence)
 
 comparable_demand_model = ComparableDemandModel(
     data=training_data,
-    forecasting_data=forecasting_data
+    forecasting_data=forecasting_data,
+    # target='sales_rate'
 )
 
 available_projects = comparable_demand_model.available_projects

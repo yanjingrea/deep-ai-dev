@@ -11,6 +11,9 @@ import pandas as pd
 from dataclasses import dataclass, field
 from typing import Dict, Optional
 
+import launch_weekend.classification.training_data
+
+
 #-----------------------------------------------------------------------------------------------------------------------
 
 # SQL column name definition
@@ -62,7 +65,7 @@ class TColumnName:
 
 	# compare only by the normalized name
 	def __eq__(self, other):
-		return self.data == other.data
+		return self.data == launch_weekend.classification.training_data.data
 
 
 # partial DDL definition (`CREATE TABLE` statement only)
