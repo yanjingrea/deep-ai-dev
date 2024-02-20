@@ -15,7 +15,7 @@ from DeepAI_weekly_report.test.func_helper_function import (
 from DeepAI_weekly_report.test.cls_paths_collections import PathsCollections
 
 manual_data = pd.read_csv(
-    '/Users/wuyanjing/PycharmProjects/app/demand_curve_ec/local/manual_input_ec.csv'
+    'demand_curve_ec/manual_input/manual_input_ec.csv'
 )
 
 manual_data['transaction_month'] = pd.to_datetime(manual_data['transaction_month'])

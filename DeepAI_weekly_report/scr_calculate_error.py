@@ -154,7 +154,6 @@ def save_historical_data(
 ):
 
     his_path = (
-        f'/Users/wuyanjing/PycharmProjects/app'
         f'/DeepAI_weekly_report/output/{data_path}_historical_error.csv'
     )
     his_data = pd.read_csv(his_path, header=0)

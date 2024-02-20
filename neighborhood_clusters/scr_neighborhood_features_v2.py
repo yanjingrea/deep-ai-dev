@@ -9,7 +9,7 @@ current_month = datetime.today().replace(day=1).date()
 
 raw_data_path = f'{OUTPUT_DIR}neighborhood_features.plk'
 
-if False:
+if True:
     from constants.redshift import query_data
 
     data = query_data(
@@ -141,6 +141,7 @@ if False:
             from ui_app.project_summary_prod_sg a
             where project_status = 'completed'
                 and property_type_group = 'private-stack'
+                and unit_count != 0
             group by neighborhood_id
         ), base_age_size_incomplete_condo as (
                 select
@@ -150,6 +151,7 @@ if False:
             from ui_app.project_summary_prod_sg a
             where project_age <= 0
                 and property_type_group = 'private-stack'
+                and unit_count != 0
             group by neighborhood_id, project_status
         ), base_age_group as (
             with base as (
@@ -229,7 +231,7 @@ if False:
             on lower(a.label) = f.neighborhood
         full outer join base_age_size_completed_condo g
             using (area_id)
-        full outer join base_age_size_imcompleted_condo h
+        full outer join base_age_size_incomplete_condo h
             using (area_id)
         full outer join base_age_group i
             using (area_id)

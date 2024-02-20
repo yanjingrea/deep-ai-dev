@@ -11,7 +11,7 @@ image_paths = []
 # manual input data
 # --------------------------------------------------------------------------------------------
 manual_data = pd.read_csv(
-    '/Users/wuyanjing/PycharmProjects/app/demand_curve_ec/local/manual_input_ec.csv'
+    '/demand_curve_ec/local/manual_input_ec.csv'
 )
 
 manual_data['transaction_month'] = pd.to_datetime(manual_data['transaction_month'])

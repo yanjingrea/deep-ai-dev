@@ -40,7 +40,6 @@ trans_datas = query_data(
 )
 
 position_data = pd.read_csv(
-    "/Users/wuyanjing/PycharmProjects/app"
     "/unit_sequence/stack_info"
     f"/orientation_result/{project}_orientation.csv",
     index_col=0

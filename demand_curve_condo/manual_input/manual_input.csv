@@ -1,0 +1,15 @@
+﻿dw_project_id,project_name,tenure,proj_num_of_units,transaction_month,launch_year_month,launching_period,proj_max_floor,num_of_bedrooms,num_of_units,num_of_remaining_units,floor_area_sqm,price,sales,zone,neighborhood
+86bcc94255d04aaab84c1a5a11f3f5b0,Hillhaven,UNKNOWN,341,1/1/24,1/1/24,1,28,2,182,182,67.0989011,2233,,bukit batok,hillview
+86bcc94255d04aaab84c1a5a11f3f5b0,Hillhaven,UNKNOWN,341,1/1/24,1/1/24,1,28,3,105,105,92.00952381,2198.9,,bukit batok,hillview
+86bcc94255d04aaab84c1a5a11f3f5b0,Hillhaven,UNKNOWN,341,1/1/24,1/1/24,1,28,4,54,54,123.4444444,2128.5,,bukit batok,hillview
+7700c076551698ec1f99600c24a2df87,The Arcady at Boon Keng,freehold,172,1/1/24,1/1/24,1,24,1,11,11,49,2761,,kallang,bendemeer
+7700c076551698ec1f99600c24a2df87,The Arcady at Boon Keng,freehold,172,1/1/24,1/1/24,1,24,2,76,76,66.75,2750,,kallang,bendemeer
+7700c076551698ec1f99600c24a2df87,The Arcady at Boon Keng,freehold,172,1/1/24,1/1/24,1,24,3,73,73,106.0410959,2629,,kallang,bendemeer
+7700c076551698ec1f99600c24a2df87,The Arcady at Boon Keng,freehold,172,1/1/24,1/1/24,1,24,4,12,12,149.6666667,2816,,kallang,bendemeer
+dcb010254f6a58a773b85bdb1160dcdc,Lentoria,leasehold,267,1/2/24,1/2/24,1,17,1,23,23,50,2050,,ang mo kio,tagore
+dcb010254f6a58a773b85bdb1160dcdc,Lentoria,leasehold,267,1/2/24,1/2/24,1,17,2,120,120,67.2,2050,,ang mo kio,tagore
+dcb010254f6a58a773b85bdb1160dcdc,Lentoria,leasehold,267,1/2/24,1/2/24,1,17,3,70,70,92.34285714,2050,,ang mo kio,tagore
+dcb010254f6a58a773b85bdb1160dcdc,Lentoria,leasehold,267,1/2/24,1/2/24,1,17,4,54,54,115.8518519,2050,,ang mo kio,tagore
+682a48988db71cb2860888075a431fa0,The Hill @ One North,leasehold,142,1/2/24,1/2/24,1,11,2,72,72,72.18055556,2500,,queenstown,one north
+682a48988db71cb2860888075a431fa1,The Hill @ One North,leasehold,142,1/2/24,1/2/24,1,11,3,64,64,96.96875,2500,,queenstown,one north
+682a48988db71cb2860888075a431fa2,The Hill @ One North,leasehold,142,1/2/24,1/2/24,1,11,4,6,6,116.8333333,2500,,queenstown,one north

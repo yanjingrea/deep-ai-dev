@@ -1,9 +1,24 @@
-### Run Streamlit locally
-#### Installation
-1. create a virtue environment `python -m venv .venv`
-2. `pip install streamlit`
-3. to test `streamlit hello` 
+# deep-ai-dev
 
-#### Use streamlit
-1. `source .venv/bin/activate`
-2. `streamlit run main.py`
+A repository for DeepAI research, including demand curve, unit ranking u curve, national index forecasting, and related problems
+
+### 1. Setting up the environment
+
+#### General
+
+If you are using PyCharm or any other IDE, you can create a python virtual environment using them.
+If you would like to create one manually, run the following:
+
+```
+python -m venv <path to a new venv folder>
+
+# on Windows:
+<path to a new venv folder>/bin/activate
+
+# on Unix-like:
+source <path to a new venv folder>/bin/activate
+
+cd <root of this repo>
+
+pip install -r requirements.txt
+```
