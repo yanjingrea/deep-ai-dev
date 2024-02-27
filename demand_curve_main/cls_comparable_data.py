@@ -10,6 +10,7 @@ class BaseCMData:
     aggregate_level: Literal['project', 'bedrooms']
     max_year_gap: Optional[int] = 3
     rolling_windows: Optional[int] = 3
+    min_stock: Optional[int] = 75
 
     quantity: Optional[str] = 'sales'
     price: Optional[str] = 'price'

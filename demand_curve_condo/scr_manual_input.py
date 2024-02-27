@@ -9,7 +9,7 @@ from constants.utils import NatureD, NatureL
 from demand_curve_main.scr_coef import query_adjust_coef
 from demand_curve_condo.scr_common_training import comparable_demand_model, bedroom_data
 from DeepAI_weekly_report.test.func_helper_function import (
-    dev_figure_dir, report_dir,
+    dev_figure_dir, report_dir, dev_data_dir,
     normalize_bed_num
 )
 from DeepAI_weekly_report.test.cls_paths_collections import PathsCollections
@@ -23,7 +23,13 @@ manual_data = bedroom_data.calculate_launching_period(manual_data)
 
 # manual_data['price'] = manual_data['price'] / query_adjust_coef(manual_data)
 
-target_projects = ['Lentoria', 'The Hill @ One North']
+target_projects = [
+    'Lentoria',
+    'The Hill @ One North'
+]
+
+temp_comparable_demand_model = comparable_demand_model.copy()
+temp_comparable_demand_model.__setattr__('features', ['price'])
 
 image_paths = []
 for idx in np.arange(len(manual_data)):
@@ -44,7 +50,6 @@ for idx in np.arange(len(manual_data)):
     include_ids = None
     max_launching_period = None
     exclude_ids = None
-
 
     if project_name == 'The Arcady at Boon Keng':
         if num_of_bedroom in [3, 4]:
@@ -72,36 +77,93 @@ for idx in np.arange(len(manual_data)):
 
         if num_of_bedroom == 1:
             max_launching_period = 1
-            include_ids = [
-                '5db64f51ff8b9b30a2270dd44cc15845',
+            # include_ids = [
+            #     '5db64f51ff8b9b30a2270dd44cc15845',  # Lentor Morden
+            #     'c3532fd0b2e9e84d9ad9f36c8f675230',  # Lentor Hill Residences
+            # ]
+
+            exclude_ids = [
                 'c3532fd0b2e9e84d9ad9f36c8f675230',
+                '5db64f51ff8b9b30a2270dd44cc15845',
+                # '7a0eaa8196d9676a189aa4a7fbabc7e5',
+                # 'dc092f3963693f4ebea31bb85ec8cf25',
+                # '7d1c38c1beac255f481b37ca3328eabb'  # the-botany-at-dairy-farm
             ]
+
+        elif num_of_bedroom == 2:
+            max_launching_period = 1
+            # include_ids = [
+            #     '7d1c38c1beac255f481b37ca3328eabb'  # the-botany-at-dairy-farm
+            #     '5db64f51ff8b9b30a2270dd44cc15845',  # Lentor Morden
+            #     'c3532fd0b2e9e84d9ad9f36c8f675230',  # Lentor Hill Residences
+            # ]
+            exclude_ids = [
+                # '3c78a223221a2aca191612502c67f7a2' # pasir-ris-8
+                'f3d8b3586d5439ab5df454bac2381bc6'  # the-watergardens-at-canberra
+            ]
+
+        elif num_of_bedroom == 3:
+            max_launching_period = 1
+
+            exclude_ids = [
+                'c3532fd0b2e9e84d9ad9f36c8f675230',  # Lentor Hill Residences
+            ]
+
+        elif num_of_bedroom == 4:
+            include_ids = [
+                '5db64f51ff8b9b30a2270dd44cc15845',  # Lentor Morden
+                'c3532fd0b2e9e84d9ad9f36c8f675230',  # Lentor Hill Residences
+            ]
+
+            # exclude_ids = [
+            #     'f3d8b3586d5439ab5df454bac2381bc6',
+            #     'dd7046f546db1ba2253870b151d89f61',
+            #     '7d1c38c1beac255f481b37ca3328eabb'
+            # ]
+            max_launching_period = 3
         else:
             max_launching_period = 3
 
     elif project_name == 'The Hill @ One North':
 
         if num_of_bedroom == 2:
-            max_launching_period = 6
-            exclude_ids = ['6c7a8743f25477e921c882cd04bc0470']
+            max_launching_period = 1
+            # exclude_ids = [
+            #     '6c7a8743f25477e921c882cd04bc0470',
+            #     '3c78a223221a2aca191612502c67f7a2',
+            #     'c3532fd0b2e9e84d9ad9f36c8f675230',
+            # ]
         elif num_of_bedroom == 3:
             max_launching_period = 1
-            exclude_ids = [
-                '6c7a8743f25477e921c882cd04bc0470',
-                # '2abe67cd206094d32053d93764cc9a65'
-            ]
+            # exclude_ids = [
+            #     '6c7a8743f25477e921c882cd04bc0470',
+            #     '2abe67cd206094d32053d93764cc9a65',
+            #     'd021f3b74360d1019a5eabdc507e0a58'
+            # ]
         else:
             max_launching_period = 3
+            exclude_ids = [
+                '6c7a8743f25477e921c882cd04bc0470',
+                '2abe67cd206094d32053d93764cc9a65',
+                'd021f3b74360d1019a5eabdc507e0a58'
+            ]
 
+    if project_name in ['Lentoria', 'The Hill @ One North']:
+        cdm = temp_comparable_demand_model
+    else:
+        cdm = comparable_demand_model
 
-
-    linear_model, adjusted_training_data = comparable_demand_model.fit_project_room_demand_model(
+    linear_model, adjusted_training_data = cdm.fit_project_room_demand_model(
         project_id=adjusted_project_data['dw_project_id'].iloc[0],
         project_data=rebased_project_data,
         num_of_bedroom=num_of_bedroom,
         include_ids=include_ids,
         max_launching_period=max_launching_period,
         exclude_ids=exclude_ids
+    )
+
+    adjusted_training_data.to_csv(
+        dev_data_dir + f'{project_name} {num_of_bedroom}-bedroom.csv', index=False
     )
 
 
@@ -114,6 +176,18 @@ for idx in np.arange(len(manual_data)):
                     f"to {normalize_date(row['transaction_month_end'])}",
         axis=1
     )
+
+    if False:
+        adjusted_project_data['nth_launch'] = adjusted_training_data['nth_launch'].max() + 1
+        cy = 2027 if project_name != 'The Hill @ One North' else 2026
+        lc = 0 if project_name != 'The Hill @ One North' else 6
+        adjusted_project_data['completion_year'] = cy
+        adjusted_project_data['num_of_nearby_launched_condo_proj_1000m'] = lc
+
+    # price_range = (
+    #     adjusted_project_data['price'].min() * 0.8,
+    #     adjusted_project_data['price'].max() * 1.2
+    # )
 
     price_range = (
         adjusted_project_data['price'].min() * 0.8,

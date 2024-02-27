@@ -243,7 +243,8 @@ class ComparableDemandModel:
 
         for max_distance in np.arange(1, n_attempt + 1) * distance_gap:
 
-            if max_distance != distance_gap:
+            if (max_distance != distance_gap) and (max_radius_projects.empty is False):
+
                 nearby_projects = max_radius_projects[max_radius_projects.distance <= max_distance]
 
                 nearby_projects = pd.concat(
@@ -259,15 +260,7 @@ class ComparableDemandModel:
             else:
                 print(f'finding comparable projects in the same clusters...')
 
-            if include_ids is not None:
-                nearby_projects = pd.concat(
-                    [
-                        nearby_projects,
-                        pd.DataFrame({'nearby_project_id': include_ids})
-                    ],
-                    ignore_index=True
-                )
-
+            # get training data
             training_data = self.filter_comparable_projects(
                 project_id,
                 num_of_bedroom,
@@ -277,48 +270,64 @@ class ComparableDemandModel:
                 max_launching_period=max_launching_period
             ).copy()
 
+            # exclude some projects
             if exclude_ids is not None:
                 training_data = training_data[~training_data[self.project_key].isin(exclude_ids)]
+
+            # include some projects
             if include_ids is not None:
-
                 to_add_ids = [i for i in include_ids if i not in training_data.dw_project_id]
-
                 include_data = self.data[
                     (self.data[self.project_key].isin(to_add_ids)) &
                     (self.data['num_of_bedrooms'] == num_of_bedroom)
-                    ]
+                ]
+                if max_launching_period is not None:
+                    include_data = include_data[include_data['launching_period'] <= max_launching_period]
+
                 training_data = pd.concat([training_data, include_data], ignore_index=True)
 
-            if (len(training_data) < 5 and max_launching_period > 3) or (training_data.nunique()['dw_project_id'] < 3):
-                if max_distance != n_attempt * distance_gap:
-                    continue
-                elif project_data.price.mean() > self.data.price.quantile(0.75):
-                    nearby_projects = pd.DataFrame(
-                        {'nearby_project_id': self.data[self.project_key].unique()}
-                    )
+            if training_data.nunique()['dw_project_id'] < 3:
 
-                    proj_avg_price = project_data.price.mean()
+                if max_launching_period is not None:
 
-                    training_data = self.filter_comparable_projects(
-                        project_id,
-                        num_of_bedroom,
-                        price_range=(proj_avg_price / 0.9 * 0.8, proj_avg_price / 1.1 * 1.2),
-                        nearby_projects=nearby_projects,
-                        project_data=project_data
-                    ).copy()
+                    if (len(training_data) < 5) and (max_launching_period > 3):
+
+                        if max_distance != n_attempt * distance_gap:
+                            continue
+
+                        elif project_data.price.mean() > self.data.price.quantile(0.75):
+                            nearby_projects = pd.DataFrame(
+                                {'nearby_project_id': self.data[self.project_key].unique()}
+                            )
+
+                            proj_avg_price = project_data.price.mean()
+
+                            training_data = self.filter_comparable_projects(
+                                project_id,
+                                num_of_bedroom,
+                                price_range=(proj_avg_price / 0.9 * 0.8, proj_avg_price / 1.1 * 1.2),
+                                nearby_projects=nearby_projects,
+                                project_data=project_data
+                            ).copy()
 
             adj_training_data = training_data.copy()
             adj_training_data[self.price] = training_data[self.price] * coef_to_multiply
+            adj_training_data['nth_launch'] = adj_training_data['launch_year_month'].rank()
 
-            if exclude_ids:
-                adj_training_data = adj_training_data[~adj_training_data[self.project_key].isin(exclude_ids)]
-
+            # expand circle if training sample size is not enough
+            if adj_training_data.empty or (len(training_data) == 1):
+                continue
             linear_model = fit_local_linear_model(adj_training_data)
 
-            if closest_model is None:
-                closest_model = linear_model
-                closest_training_data = adj_training_data
-            elif (
+            # if coefficient in range, exit
+            if coefficient_range[0] < linear_model.params[self.price] < coefficient_range[1]:
+                return linear_model, adj_training_data
+
+            # if coefficient not in range
+            # update closest model if fulfilled
+            if (
+                    (closest_model is None)
+                    or
                     (closest_model.params[self.price] < linear_model.params[self.price] < coefficient_range[0])
                     or
                     (coefficient_range[1] < linear_model.params[self.price] < closest_model.params[self.price])
@@ -326,29 +335,31 @@ class ComparableDemandModel:
                 closest_model = linear_model
                 closest_training_data = adj_training_data
 
-            if (
-                    (linear_model.params[self.price] < coefficient_range[0])
-                    or
-                    (linear_model.params[self.price] > coefficient_range[1])
-            ):
-                if max_distance < n_attempt * distance_gap:
-                    continue
+            # option 1: expand the searching circle
+            if max_distance < n_attempt * distance_gap:
+                continue
 
-                elif len(adj_training_data) > 10:
+            # option 2: random selection
+            elif len(adj_training_data) > 10:
 
-                    print('finding comparable project randomly...')
+                print('finding comparable project randomly...')
 
-                    for i in np.arange(1, (n_attempt + 1) * 2):
-                        random_sample = adj_training_data.sample(min(n_attempt, len(adj_training_data) - 1))
-                        random_model = fit_local_linear_model(random_sample)
-                        if random_model.params[self.price] not in coefficient_range:
-                            continue
-                        else:
+                for i in np.arange(1, (n_attempt + 1) * 2):
+                    random_sample = adj_training_data.sample(min(n_attempt, len(adj_training_data) - 1))
+                    random_model = fit_local_linear_model(random_sample)
+                    if random_model.params[self.price] not in coefficient_range:
+                        continue
+                    else:
 
-                            print('fail to get qualified curve by randomly filtering')
+                        print('fail to get qualified curve by randomly filtering')
+                        closest_model = random_model
+                        closest_training_data = random_sample
+                        break
 
-                            linear_model = closest_model
-                            adj_training_data = closest_training_data
-                            break
+        return closest_model, closest_training_data
 
-            return linear_model, adj_training_data
+    def copy(self):
+
+        return ComparableDemandModel(
+            **self.__dict__
+        )

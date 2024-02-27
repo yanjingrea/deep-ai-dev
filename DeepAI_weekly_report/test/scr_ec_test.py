@@ -1,6 +1,8 @@
 from DeepAI_weekly_report.test.func_helper_function import *
 from demand_curve_ec.scr_common_training import comparable_demand_model, bedroom_data
 from demand_curve_main.scr_coef import query_adjust_coef
+from demand_curve_ec.manual_input import *
+
 
 min_stock = 10
 min_proj_size = 50
@@ -11,7 +13,7 @@ image_paths = []
 # manual input data
 # --------------------------------------------------------------------------------------------
 manual_data = pd.read_csv(
-    '/demand_curve_ec/local/manual_input_ec.csv'
+    '/Users/wuyanjing/PycharmProjects/deep-ai-dev/demand_curve_condo/manual_input/manual_input.csv'
 )
 
 manual_data['transaction_month'] = pd.to_datetime(manual_data['transaction_month'])
@@ -60,6 +62,11 @@ for idx in np.arange(len(manual_data)):
         # price_range=(1450, 1650),
         coefficient_range=(-8, -3)
     )
+
+    if linear_model is None:
+        continue
+
+
     image_paths = model_to_demand_curve(
         data_model=bedroom_data,
         linear_model=linear_model,

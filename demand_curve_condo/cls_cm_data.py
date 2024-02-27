@@ -16,27 +16,49 @@ ALL_BEDS = ['one', 'two', 'three', 'four', 'five']
 bed_nums = np.arange(1, 6)
 
 
-# @dataclass
 class CondoCMData(BaseCMData):
 
     @property
     def transactions_query(self):
+
         return f"""
-                base_property_price as (
-                    select * from (
-                        select
-                            *,
-                            row_number() over (partition by dw_property_id order by transaction_date desc) as seq
-                        from data_science.ui_master_sg_transactions_view_filled_features_condo a
-                        join data_science.ui_master_sg_project_geo_view_filled_features_condo b
-                            using (dw_project_id)
-                        where a.property_type_group = 'Condo'
-                            and transaction_sub_type = 'new sale'
-                            and property_type != 'ec'
-                            and transaction_date < '{datetime.today().replace(day=1).date()}'
-                    ) where seq = 1
-                )
-            """
+        base_property_price as (
+                       select
+                           project_dwid as dw_project_id,
+                           property_dwid,
+                           transaction_month,
+                           num_of_bedrooms,
+                           unit_price_psf,
+                           floor_area_sqft,
+                           floor_area_sqm,
+                           address_floor_num,
+                           neighborhood_id
+                       from (
+                                select
+                                    neighborhood_id,
+                                    project_dwid,
+                                    property_dwid,
+                                    unit_mix as num_of_bedrooms,
+                                    activity_psf as unit_price_psf,
+                                    gross_floor_area_sqft as floor_area_sqft,
+                                    gross_floor_area_sqm as floor_area_sqm,
+                                    floor_num as address_floor_num,
+                                    to_date(left(activity_date, 7), 'YYYY-MM') as transaction_month,
+                                            min(activity_date)
+                                            over (partition by project_dwid) as actual_launch_date,
+                                    datediff(days, actual_launch_date, activity_date) as days_on_market,
+                                            row_number()
+                                            over (partition by project_dwid, property_dwid order by activity_date) as seq
+                                from ui_app.transacted_summary_prod_sg t
+                                where t.property_group = 'condo'
+                                  and t.activity_type = 'new-sale'
+                                  and t.property_type != 'executive condominium'
+                                  and unit_mix in (0, 1, 2, 3, 4, 5, 6)
+                                  and activity_date < '{datetime.today().replace(day=1).date()}'
+                            ) as a
+                       where seq = 1
+                   )
+        """
 
     @property
     def developer_pricing_query(self):
@@ -59,7 +81,7 @@ class CondoCMData(BaseCMData):
                     select
                         c.dw_project_id,
                         c.dw_building_id,
-                        a.project_launch_month::varchar as transaction_month_index,
+                        to_date(a.project_launch_month::varchar, 'YYYYMM') as transaction_month,
                         num_of_bedrooms,
                         floor_area_sqft,
                         floor_area_sqft * 10.76 as floor_area_sqm,
@@ -128,43 +150,56 @@ class CondoCMData(BaseCMData):
         else:
             data = query_data(
                 f"""
-                    with base_index as ({time_index.query_scripts}),
+                    with base_index as (
+                        with
+                            base_index_table as (
+                                              select
+                                                  index_date as transaction_month,
+                                                  quarter_index as hi_avg_improved
+                                              from ui_app.house_index_summary_prod_sg
+                                              where location_level = 'country'
+                                                and property_type_group = 'private-stack'
+                                                and unit_mix = 'all'
+                                                and activity_type = 'sale'
+                                              order by index_date desc
+                                          )
+                        select
+                        transaction_month,
+                        hi_avg_improved as rebase_index,
+                        (
+                          select
+                              hi_avg_improved
+                          from base_index_table
+                          order by transaction_month desc
+                          limit 1
+                        ) as current_index,
+                        1 / rebase_index * current_index as time_adjust_coef
+                        from base_index_table
+                        ),
                     base_floor_coef as ({floor_coef.query_scripts}),
                     base_area_coef as ({area_coef.query_scripts}),
                     {price_query},
                     base_property_panel as (
                         select
-                            b.dw_project_id,
+                            dw_project_id,
                             {"a.num_of_bedrooms" if self.aggregate_level == 'bedrooms' else '--'},
-                            to_date(transaction_month_index, 'YYYYMM') as transaction_month,
-                            (
-                                select hi_avg_improved
-                                from data_science.sg_condo_resale_index_sale
-                                order by transaction_month_index desc limit 1
-                            ) as current_index,
+                            transaction_month,
                             avg(
                                 unit_price_psf
                                     * floor_adjust_coef
                                     * area_adjust_coef
-                                    --* zone_adjust_coef
                                     * time_adjust_coef
                             ) as price,
                             avg(floor_area_sqm) as floor_area_sqm,
                             {0 if mode == 'forecasting' else 'count(*)'} as sales
                         from base_property_price a
-                        left outer join data_science.ui_master_sg_project_geo_view_filled_features_condo b
-                            using (dw_project_id)
-                        left outer join  base_index c
-                            using (transaction_month_index)
-                        left outer join  base_floor_coef f
-                            using (address_floor_num)
-                        left outer join base_area_coef g
-                                        on a.floor_area_sqft >= g.area_lower_bound and
-                                           a.floor_area_sqft < g.area_upper_bound
-                        left outer join (
-                            {zone_coef.query_scripts}
-                        ) d
-                            on b.zone = d.zone and left(a.transaction_month_index, 4)::int = d.transaction_year
+                            left outer join base_index c
+                                                    using (transaction_month)
+                                    left outer join base_floor_coef f
+                                                    using (address_floor_num)
+                                    left outer join base_area_coef g
+                                                    on a.floor_area_sqft >= g.area_lower_bound and
+                                                       a.floor_area_sqft < g.area_upper_bound
                         group by 1, 2 {",3" if self.aggregate_level == 'bedrooms' else '--'}
                     )
                     select
@@ -197,7 +232,8 @@ class CondoCMData(BaseCMData):
                         {floor_area_sqm_query} as floor_area_sqm,
                         proj_max_floor,
                         zone,
-                        neighborhood
+                        neighborhood,
+                        completion_year
                     from base_property_panel a
                     join data_science.ui_master_sg_project_geo_view_filled_features_condo b
                         using(dw_project_id)
@@ -206,7 +242,7 @@ class CondoCMData(BaseCMData):
                         project_dwid as dw_project_id,
                         project_display_name 
                         from ui_app.project_summary_prod_sg
-                     ) c
+                    ) c
                         using(dw_project_id)
                     {launch_date_filter}
                     order by 1, 2, 3, 4
@@ -221,6 +257,10 @@ class CondoCMData(BaseCMData):
             data['tenure'] = data['tenure'].apply(lambda a: 1 if a == 'freehold' else 0)
         data['transaction_month'] = pd.to_datetime(data['transaction_month'])
         data['sales_rate'] = data[self.quantity] / data['num_of_units']
+
+        data['num_of_bedrooms'] = data['num_of_bedrooms'].astype(int)
+        data = data[data['proj_num_of_units'] >= self.min_stock]
+
         data = data[~data[self.price].isna()].copy()
 
         return data

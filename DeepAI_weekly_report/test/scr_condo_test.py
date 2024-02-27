@@ -2,6 +2,7 @@ from DeepAI_weekly_report.test.func_helper_function import *
 from demand_curve_condo.scr_common_training import *
 from demand_curve_main.scr_coef import query_adjust_coef
 
+
 min_stock = 10
 min_proj_size = 50
 test_projects = None

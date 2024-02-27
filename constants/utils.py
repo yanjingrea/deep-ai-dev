@@ -1,5 +1,7 @@
 import os
 from os.path import dirname, realpath
+from os.path import expanduser
+
 
 OUTPUT_DIR = dirname(realpath(__file__)) + os.sep + 'local' + os.sep
 

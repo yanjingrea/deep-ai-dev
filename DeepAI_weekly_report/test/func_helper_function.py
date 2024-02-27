@@ -7,7 +7,7 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 
 from DeepAI_weekly_report.test.cls_paths_collections import PathsCollections
-from constants.utils import NatureD, NatureL
+from constants.utils import NatureD, NatureL, print_in_green_bg
 from demand_curve_main.cls_comparable_data import BaseCMData
 from demand_curve_main.cls_comparable_model import ComparableDemandModel
 
@@ -95,6 +95,11 @@ def get_single_project_report_results(
         project_id=adjusted_project_data.dw_project_id.iloc[0],
         num_of_bedroom=num_of_bedroom
     )
+
+    if linear_model is None:
+        print_in_green_bg(f'Failed to get a demand curve for {project_name} {num_of_bedroom}-bedrooms.')
+
+        return test_results, image_paths
 
     if test_results is not None:
         adjusted_project_data['pred_sales'] = linear_model.predict(adjusted_project_data)
