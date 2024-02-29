@@ -247,14 +247,6 @@ class ComparableDemandModel:
 
                 nearby_projects = max_radius_projects[max_radius_projects.distance <= max_distance]
 
-                nearby_projects = pd.concat(
-                    [
-                        nearby_projects,
-                        max_radius_projects[max_radius_projects.distance <= max_distance][['nearby_project_id']]
-                    ],
-                    ignore_index=True
-                ).drop_duplicates()
-
                 print(f'finding comparable projects within {max_distance / 1000 :.0f}km...')
 
             else:

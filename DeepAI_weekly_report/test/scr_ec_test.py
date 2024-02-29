@@ -1,3 +1,11 @@
+"""
+Overview:
+* This Python script is dedicated to generating demand curves for specified executive condo projects and bedroom types.
+* The output includes graphical representations of demand curves, which are stored as image paths for reporting purposes.
+* The script also performs weekly tests on the demand model and saves the results for further analysis.
+"""
+
+
 from DeepAI_weekly_report.test.func_helper_function import *
 from demand_curve_ec.scr_common_training import comparable_demand_model, bedroom_data
 from demand_curve_main.scr_coef import query_adjust_coef

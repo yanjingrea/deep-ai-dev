@@ -18,7 +18,10 @@ manual_data = pd.read_csv(
     'manual_input/manual_input.csv'
 )
 
-manual_data['transaction_month'] = pd.to_datetime(manual_data['transaction_month'])
+manual_data['transaction_month'] = pd.to_datetime(
+    manual_data['transaction_month'],
+    # dayfirst=True
+)
 manual_data = bedroom_data.calculate_launching_period(manual_data)
 
 # manual_data['price'] = manual_data['price'] / query_adjust_coef(manual_data)
@@ -205,7 +208,8 @@ for idx in np.arange(len(manual_data)):
                 continue
 
             temp_period = row['launching_period']
-            temp_display_date = row['date_to_display']
+            # temp_display_date = row['date_to_display']
+            temp_display_date = 'from 2024 Mar to 2024 May'
 
             fig, ax = linear_model.extract_2d_demand_curve(
                 adjusted_project_data.iloc[[idx]],

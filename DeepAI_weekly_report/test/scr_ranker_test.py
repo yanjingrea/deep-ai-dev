@@ -1,3 +1,11 @@
+"""
+# Overview:
+# This script is part of a suite of tools for ranking and evaluating property unit sequences.
+It leverages the CatBoostAVMRanker for training on historical data and evaluates performance using U-curves and Tower View visualizations.
+# It's designed to assess and visualize the expected selling sequence of units within new property projects.
+"""
+
+
 import pickle
 
 import pandas as pd

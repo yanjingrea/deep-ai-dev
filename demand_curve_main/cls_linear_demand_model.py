@@ -83,7 +83,7 @@ class BaseLinearDemandModel:
         pred_Q = np.clip(
             temp_y_hat,
             0,
-            X['num_of_remaining_units'].values
+            data['num_of_remaining_units'].values
         )
 
         return pred_Q

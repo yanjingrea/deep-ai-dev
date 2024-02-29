@@ -34,7 +34,7 @@ class BaseCMData:
         ...
 
     def calculate_launching_period(self, project_data):
-        project_data['launch_year_month'] = pd.to_datetime(project_data['launch_year_month'])
+        project_data['launch_year_month'] = pd.to_datetime(project_data['launch_year_month'], dayfirst=False)
         project_data['transaction_month_end'] = (
             project_data['transaction_month'].apply(
                 lambda d:
